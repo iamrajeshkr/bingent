@@ -11,6 +11,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.kitab.app",
       "adaptiveIcon": {
         "backgroundColor": "#F8F4EB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

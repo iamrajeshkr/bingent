@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://oplsegojtwgweiawxhln.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbHNlZ29qdHdnd2VpYXd4aGxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjQ4NTEsImV4cCI6MjA5Njk0MDg1MX0.3sziCh6zViW8dZVhAsFU9Xe_AG9p1knDxJ3sXWpbiwQ",
+        "EXPO_PUBLIC_API_URL": "https://my-kitab-backend.vercel.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://oplsegojtwgweiawxhln.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbHNlZ29qdHdnd2VpYXd4aGxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjQ4NTEsImV4cCI6MjA5Njk0MDg1MX0.3sziCh6zViW8dZVhAsFU9Xe_AG9p1knDxJ3sXWpbiwQ",
+        "EXPO_PUBLIC_API_URL": "https://my-kitab-backend.vercel.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": { "buildType": "app-bundle" },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://oplsegojtwgweiawxhln.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbHNlZ29qdHdnd2VpYXd4aGxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjQ4NTEsImV4cCI6MjA5Njk0MDg1MX0.3sziCh6zViW8dZVhAsFU9Xe_AG9p1knDxJ3sXWpbiwQ",
+        "EXPO_PUBLIC_API_URL": "https://my-kitab-backend.vercel.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
