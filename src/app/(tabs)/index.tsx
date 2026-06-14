@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api, type RecItem } from '@/lib/api';
+import { api, type ContinueItem, type RecItem } from '@/lib/api';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif, typeColors } from '@/lib/theme';
 import { WEATHERS, WEATHER_PHRASE, type Weather } from '@/lib/weather';
@@ -26,6 +26,14 @@ export default function InnerWeatherHome() {
   const [recs, setRecs] = useState<RecItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cont, setCont] = useState<ContinueItem[]>([]);
+
+  // Refresh "Continue" each time the home regains focus (e.g. after listening).
+  useFocusEffect(
+    useCallback(() => {
+      api.getContinue().then((r) => setCont(r.items.filter((i) => !i.position?.completed))).catch(() => {});
+    }, [])
+  );
 
   const choose = async (w: Weather) => {
     setWeather(w);
@@ -75,6 +83,38 @@ export default function InnerWeatherHome() {
 
       {!weather && (
         <Text style={styles.hint}>Tap how it feels — your page changes with it.</Text>
+      )}
+
+      {cont.length > 0 && (
+        <View style={{ marginTop: 18 }}>
+          <Text style={styles.section}>Continue</Text>
+          {cont.slice(0, 2).map((it) => {
+            const p = it.position ?? {};
+            const ratio =
+              p.totalChapters && p.chapterSeq != null
+                ? Math.min(1, p.chapterSeq / p.totalChapters)
+                : p.durationSec
+                ? Math.min(1, (p.audioSec ?? 0) / p.durationSec)
+                : 0;
+            const sub = p.totalChapters
+              ? `Chapter ${p.chapterSeq ?? 0} of ${p.totalChapters}`
+              : `${Math.round(ratio * 100)}% · resume`;
+            return (
+              <Pressable
+                key={`${it.kind}-${it.id}`}
+                style={styles.continueCard}
+                onPress={() => router.push({ pathname: '/item/[type]/[id]', params: { type: it.kind, id: it.id } })}>
+                <Text style={[styles.tag, { color: typeColors[it.kind] }]}>
+                  {TYPE_LABEL[it.kind]} · {sub}
+                </Text>
+                <Text style={styles.continueTitle} numberOfLines={1}>{it.title}</Text>
+                <View style={styles.track}>
+                  <View style={[styles.trackFill, { width: `${Math.round(ratio * 100)}%`, backgroundColor: typeColors[it.kind] }]} />
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       )}
 
       {weather && (
@@ -174,6 +214,17 @@ const styles = StyleSheet.create({
   },
   sitText: { flex: 1, fontSize: 13, color: colors.indigo, fontWeight: '500' },
   section: { fontFamily: serif, fontSize: 16, color: colors.ink, marginTop: 22, marginBottom: 10 },
+  continueCard: {
+    backgroundColor: colors.cardAlt,
+    borderColor: colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 10,
+  },
+  continueTitle: { fontFamily: serif, fontSize: 16, color: colors.ink, marginTop: 3, marginBottom: 8 },
+  track: { height: 5, borderRadius: 3, backgroundColor: colors.track, overflow: 'hidden' },
+  trackFill: { height: 5, borderRadius: 3 },
   error: { color: colors.accent, fontSize: 12.5, marginTop: 16 },
   card: {
     backgroundColor: colors.card,

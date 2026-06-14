@@ -119,6 +119,22 @@ export interface Letter {
   generated_at: string;
 }
 
+// Content-type-aware position blob.
+export interface Position {
+  audioSec?: number;
+  durationSec?: number;
+  completed?: boolean;
+  // journey-only:
+  section?: string;
+  subsection?: string;
+  chapterSeq?: number;
+  totalChapters?: number;
+}
+export interface ContinueItem extends CatalogRef {
+  position: Position;
+  updated_at: string;
+}
+
 export interface EventInput {
   type: string;
   kind?: ItemType;
@@ -158,6 +174,12 @@ export const api = {
 
   getCatalog: () => get<{ bites: any[]; journeys: any[]; summaries: any[] }>('/v1/catalog'),
   getItem: (kind: ItemType, id: string) => get<any>(`/v1/catalog/${kind}/${id}`),
+
+  saveProgress: (kind: ItemType, id: string, position: Position) =>
+    post<{ ok: true }>('/v1/progress', { kind, id, position }),
+  getProgress: (kind: ItemType, id: string) =>
+    get<{ position: Position | null; updated_at: string | null }>(`/v1/progress/${kind}/${id}`),
+  getContinue: () => get<{ items: ContinueItem[] }>('/v1/progress'),
   getGarden: () => get<Garden>('/v1/garden'),
   getMirror: () => get<{ latest: MirrorSnapshot | null; first: MirrorSnapshot | null }>('/v1/mirror'),
   generateMirror: () => post<MirrorSnapshot>('/v1/mirror/generate', {}),

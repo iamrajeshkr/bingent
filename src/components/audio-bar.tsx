@@ -12,15 +12,35 @@ function fmt(secs: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function AudioBar({ url, onFinish }: { url: string; onFinish?: () => void }) {
+export function AudioBar({
+  url,
+  startAt = 0,
+  onFinish,
+  onProgress,
+}: {
+  url: string;
+  startAt?: number;
+  onFinish?: () => void;
+  onProgress?: (sec: number, dur: number) => void;
+}) {
   const player = useAudioPlayer({ uri: url });
   const status = useAudioPlayerStatus(player);
   const barWidth = useRef(1);
   const finished = useRef(false);
+  const seeked = useRef(false);
+  const lastReported = useRef(0);
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
+
+  // Resume: once loaded, seek to the saved position (once).
+  useEffect(() => {
+    if (status.isLoaded && startAt > 1 && !seeked.current) {
+      seeked.current = true;
+      player.seekTo(startAt);
+    }
+  }, [status.isLoaded, startAt, player]);
 
   useEffect(() => {
     if (status.didJustFinish && !finished.current) {
@@ -29,6 +49,15 @@ export function AudioBar({ url, onFinish }: { url: string; onFinish?: () => void
     }
     if (status.playing) finished.current = false;
   }, [status.didJustFinish, status.playing, onFinish]);
+
+  // Report progress ~every 5s of playback (throttled) for cross-device resume.
+  useEffect(() => {
+    if (!onProgress || status.duration <= 0) return;
+    if (Math.abs(status.currentTime - lastReported.current) >= 5) {
+      lastReported.current = status.currentTime;
+      onProgress(status.currentTime, status.duration);
+    }
+  }, [status.currentTime, status.duration, onProgress]);
 
   const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 

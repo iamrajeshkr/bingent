@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioBar } from '@/components/audio-bar';
 import { MarkdownText } from '@/components/markdown-text';
 import { AskLineSheet } from '@/components/ask-line-sheet';
+import { api, type Position } from '@/lib/api';
 import { fetchItem, journeyChapters } from '@/lib/content';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif, typeColors } from '@/lib/theme';
@@ -30,40 +31,46 @@ export default function ItemDetail() {
   const [listening, setListening] = useState(true);
   const [chapter, setChapter] = useState<JourneyChapter | null>(null);
   const [askQuote, setAskQuote] = useState<string | null>(null);
+  const [resumePos, setResumePos] = useState<Position | null>(null);
+  const lastReport = useRef({ sec: 0, dur: 0 });
 
   useEffect(() => {
     fetchItem(type, id)
       .then(setRow)
       .catch((e) => setError(String(e?.message ?? e)));
+    // Cross-device resume: load the saved position for this item.
+    api.getProgress(type, id).then((r) => setResumePos(r.position)).catch(() => {});
   }, [type, id]);
 
   const isJourney = type === 'journey';
   const journey = isJourney ? (row as Journey | null) : null;
   const chapters = useMemo(() => (journey ? journeyChapters(journey, lang) : []), [journey, lang]);
 
-  // Resume where the user left off
+  // Resume where the user left off (which chapter, for journeys).
   useEffect(() => {
     if (journey && chapters.length && !chapter) {
-      const cont = prefs.continueState;
-      const resume =
-        cont?.id === journey.id ? chapters.find((c) => c.seq === cont.chapterSeq) : undefined;
+      const seq = resumePos?.chapterSeq;
+      const resume = seq != null ? chapters.find((c) => c.seq === seq) : undefined;
       setChapter(resume ?? chapters[0]);
     }
-  }, [journey, chapters, chapter, prefs.continueState]);
+  }, [journey, chapters, chapter, resumePos]);
 
-  const saveProgress = (c: JourneyChapter) => {
-    if (!journey) return;
-    const next = chapters.find((x) => x.seq === c.seq + 1);
-    prefs.set({
-      continueState: {
-        type: 'journey',
-        id: journey.id,
-        title: journey.title ?? '',
-        chapterSeq: c.seq,
-        totalChapters: chapters.length,
-        nextTitle: next ? `${next.title} · ${fmtSecs(next.duration)}` : undefined,
-      },
-    });
+  // Persist position to the backend (throttled upstream by the AudioBar).
+  const persist = (audioSec: number, durationSec: number, completed: boolean) => {
+    lastReport.current = { sec: audioSec, dur: durationSec };
+    const position: Position =
+      isJourney && chapter
+        ? { chapterSeq: chapter.seq, section: chapter.section_title, totalChapters: chapters.length, audioSec, durationSec, completed }
+        : { audioSec, durationSec, completed };
+    api.saveProgress(type, id, position).catch(() => {});
+  };
+
+  // Selecting a journey chapter resets the resume point to that chapter's start.
+  const selectChapter = (c: JourneyChapter) => {
+    setChapter(c);
+    api
+      .saveProgress('journey', id, { chapterSeq: c.seq, section: c.section_title, totalChapters: chapters.length, audioSec: 0, completed: false })
+      .catch(() => {});
   };
 
   if (error) {
@@ -205,10 +212,7 @@ export default function ItemDetail() {
                     return (
                       <Pressable
                         key={c.seq}
-                        onPress={() => {
-                          setChapter(c);
-                          saveProgress(c);
-                        }}
+                        onPress={() => selectChapter(c)}
                         style={[styles.chapterRow, active && { borderColor: colors.indigo, borderWidth: 1.5 }]}>
                         <Text style={[styles.chapterRowTitle, active && { color: colors.indigo }]} numberOfLines={1}>
                           {c.title}
@@ -229,13 +233,19 @@ export default function ItemDetail() {
           <AudioBar
             key={audioUrl}
             url={audioUrl}
+            startAt={
+              isJourney
+                ? (chapter?.seq === resumePos?.chapterSeq ? resumePos?.audioSec ?? 0 : 0)
+                : resumePos?.audioSec ?? 0
+            }
+            onProgress={(sec, dur) => persist(sec, dur, dur > 0 && sec / dur > 0.95)}
             onFinish={() => {
               if (isJourney && chapter) {
                 const next = chapters.find((c) => c.seq === chapter.seq + 1);
-                if (next) {
-                  setChapter(next);
-                  saveProgress(next);
-                }
+                if (next) selectChapter(next);
+                else persist(lastReport.current.dur, lastReport.current.dur, true); // journey done
+              } else {
+                persist(lastReport.current.dur, lastReport.current.dur, true);
               }
             }}
           />
