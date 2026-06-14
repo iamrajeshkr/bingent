@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { api } from '@/lib/api';
+import { api, type Resonance } from '@/lib/api';
 import { colors, serif } from '@/lib/theme';
 import type { ItemType, Lang } from '@/lib/types';
 
@@ -25,11 +25,16 @@ export function AskLineSheet({
   const [answer, setAnswer] = useState<string | null>(null);
   const [grounded, setGrounded] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [resonance, setResonance] = useState<Resonance | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setAnswer(null);
+    setSaved(false);
+    setResonance(null);
+    api.getResonance({ kind, id, quote }).then((r) => alive && setResonance(r)).catch(() => {});
     api
       .askLine({ kind, id, lang, quote, question: 'What does this mean for me tonight?' })
       .then((r) => {
@@ -44,6 +49,15 @@ export function AskLineSheet({
     };
   }, [quote, kind, id, lang]);
 
+  const underline = async () => {
+    setSaved(true); // optimistic
+    try {
+      await api.saveHighlight({ kind, id, lang, quote });
+    } catch {
+      setSaved(false);
+    }
+  };
+
   return (
     <View style={styles.overlay}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -55,6 +69,18 @@ export function AskLineSheet({
         <Text style={styles.quote} numberOfLines={3}>
           "{quote}"
         </Text>
+
+        {resonance && resonance.count > 0 && (
+          <View style={styles.resonance}>
+            <Text style={styles.resonanceCount}>
+              <Ionicons name="people-outline" size={12} /> {resonance.count} {resonance.count === 1 ? 'reader' : 'readers'} underlined this
+            </Text>
+            {resonance.samples.filter((s) => s.note).slice(0, 1).map((s, i) => (
+              <Text key={i} style={styles.resonanceNote}>"{s.note}"</Text>
+            ))}
+          </View>
+        )}
+
         {loading ? (
           <ActivityIndicator color={colors.indigo} style={{ marginVertical: 18 }} />
         ) : (
@@ -65,6 +91,10 @@ export function AskLineSheet({
             <Ionicons name="link" size={10} /> grounded in this page
           </Text>
         )}
+        <Pressable style={[styles.underline, saved && { backgroundColor: colors.cardAlt }]} onPress={underline} disabled={saved}>
+          <Ionicons name={saved ? 'checkmark' : 'bookmark-outline'} size={15} color={saved ? colors.muted : '#FFFFFF'} />
+          <Text style={[styles.underlineText, saved && { color: colors.muted }]}>{saved ? 'Saved to your shelf' : 'Underline & keep'}</Text>
+        </Pressable>
         <Pressable style={styles.close} onPress={onClose}>
           <Text style={styles.closeText}>Close</Text>
         </Pressable>
@@ -95,6 +125,11 @@ const styles = StyleSheet.create({
   quote: { fontFamily: serif, fontStyle: 'italic', fontSize: 15, lineHeight: 22, color: colors.ink, marginBottom: 8 },
   answer: { fontFamily: serif, fontSize: 15, lineHeight: 24, color: colors.ink, marginTop: 6 },
   note: { fontSize: 11, color: colors.muted, marginTop: 10 },
-  close: { alignItems: 'center', paddingVertical: 14, marginTop: 6 },
+  resonance: { backgroundColor: colors.indigoSoft, borderRadius: 12, padding: 11, marginTop: 4 },
+  resonanceCount: { fontSize: 12, color: colors.indigo, fontWeight: '500' },
+  resonanceNote: { fontFamily: serif, fontStyle: 'italic', fontSize: 12.5, color: colors.ink, marginTop: 4 },
+  underline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.accent, borderRadius: 999, paddingVertical: 12, marginTop: 14 },
+  underlineText: { color: '#FFFFFF', fontSize: 13.5, fontWeight: '500' },
+  close: { alignItems: 'center', paddingVertical: 14, marginTop: 2 },
   closeText: { fontSize: 13, color: colors.muted },
 });

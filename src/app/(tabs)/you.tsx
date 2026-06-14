@@ -83,6 +83,16 @@ export default function You() {
         <Text style={styles.letterText}>A letter from Kitab</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.muted} />
       </Pressable>
+      <Pressable style={styles.letter} onPress={() => router.push('/arcs' as Href)}>
+        <Ionicons name="trail-sign-outline" size={18} color={colors.indigo} />
+        <Text style={styles.letterText}>Becoming arcs</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+      </Pressable>
+      <Pressable style={styles.letter} onPress={() => router.push('/commonplace' as Href)}>
+        <Ionicons name="bookmarks-outline" size={18} color={colors.indigo} />
+        <Text style={styles.letterText}>Your commonplace book</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+      </Pressable>
 
       {!!prefs.intent && (
         <View style={styles.card}>

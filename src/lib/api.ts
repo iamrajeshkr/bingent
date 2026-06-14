@@ -140,6 +140,38 @@ export interface ContinueItem extends CatalogRef {
   updated_at: string;
 }
 
+export interface Arc {
+  id: number;
+  slug: string;
+  title: Record<string, string>;
+  subtitle: Record<string, string>;
+  total_steps: number;
+  goal_weather: string | null;
+  enrollment: { current_step: number; completed_at: string | null } | null;
+}
+export interface ArcStep {
+  step_index: number;
+  title: Record<string, string>;
+  item_kind: ItemType | null;
+  item_id: string | null;
+  prompt: Record<string, string>;
+  item: { kind: ItemType; id: string; title: string; cover: string | null } | null;
+}
+export interface HighlightItem {
+  id: number;
+  item_kind: ItemType;
+  item_id: string;
+  lang: Lang;
+  quote: string;
+  note: string | null;
+  title: string;
+  created_at: string;
+}
+export interface Resonance {
+  count: number;
+  samples: { note: string | null; lang: string }[];
+}
+
 export interface EventInput {
   type: string;
   kind?: ItemType;
@@ -188,6 +220,19 @@ export const api = {
     get<{ position: Position | null; updated_at: string | null }>(`/v1/progress/${kind}/${id}`),
   getContinue: () => get<{ items: ContinueItem[] }>('/v1/progress'),
   getThreads: (lang: Lang) => get<{ threads: ThreadGroup[] }>(`/v1/threads?lang=${lang}`),
+
+  // marginalia + resonance
+  saveHighlight: (b: { kind: ItemType; id: string; lang: Lang; quote: string; note?: string }) =>
+    post<{ id: number }>('/v1/highlights', b),
+  getHighlights: () => get<{ items: HighlightItem[] }>('/v1/highlights'),
+  getResonance: (b: { kind: ItemType; id: string; quote: string }) =>
+    post<Resonance>('/v1/highlights/resonance', b),
+
+  // becoming arcs
+  getArcs: () => get<{ arcs: Arc[] }>('/v1/arcs'),
+  getArc: (slug: string) => get<{ arc: Arc; steps: ArcStep[]; enrollment: Arc['enrollment'] }>(`/v1/arcs/${slug}`),
+  enrollArc: (slug: string) => post<{ arcId: number }>(`/v1/arcs/${slug}/enroll`, {}),
+  advanceArc: (arcId: number) => post<{ step: number }>('/v1/arcs/advance', { arc_id: arcId }),
   getGarden: () => get<Garden>('/v1/garden'),
   getMirror: () => get<{ latest: MirrorSnapshot | null; first: MirrorSnapshot | null }>('/v1/mirror'),
   generateMirror: () => post<MirrorSnapshot>('/v1/mirror/generate', {}),
