@@ -95,6 +95,10 @@ export default function NowPlaying() {
         <Pressable style={styles.chip} onPress={() => p.setLang(p.nowPlaying!.lang === 'en' ? 'hi' : 'en')}>
           <Text style={styles.chipText}>{p.nowPlaying.lang === 'en' ? 'हिंदी' : 'English'}</Text>
         </Pressable>
+        <Pressable style={[styles.chip, p.autoplay && styles.chipOn]} onPress={() => p.setAutoplay(!p.autoplay)}>
+          <Ionicons name="infinite" size={12} color={p.autoplay ? colors.accent : colors.mutedOnDark} />
+          <Text style={[styles.chipText, p.autoplay && { color: colors.accent }]}>Autoplay</Text>
+        </Pressable>
       </View>
 
       {upNext.length > 0 && (
@@ -104,6 +108,24 @@ export default function NowPlaying() {
             <Pressable key={i} style={styles.row} onPress={() => p.jumpTo(i)}>
               <Text style={styles.rowNum}>{i + 1}</Text>
               <Text style={styles.rowTitle} numberOfLines={1}>{t.title}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {p.upNext.length > 0 && (
+        <View style={{ marginTop: 26 }}>
+          <Text style={styles.upNext}>More like this</Text>
+          {p.upNext.map((it) => (
+            <Pressable key={`${it.kind}:${it.id}`} style={styles.simRow} onPress={() => p.playItem(it.kind, it.id)}>
+              <View style={styles.simCover}>
+                {it.cover ? <Image source={{ uri: it.cover }} style={styles.simCoverImg} contentFit="cover" /> : <Ionicons name="musical-notes" size={14} color={colors.mutedOnDark} />}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.rowTitle} numberOfLines={1}>{it.title}</Text>
+                {it.author ? <Text style={styles.simAuthor} numberOfLines={1}>{it.author}</Text> : null}
+              </View>
+              <Ionicons name="play" size={16} color={colors.accent} />
             </Pressable>
           ))}
         </View>
@@ -137,4 +159,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   rowNum: { width: 16, textAlign: 'center', fontSize: 11, color: colors.mutedOnDark },
   rowTitle: { flex: 1, fontFamily: serif, fontSize: 14, color: colors.inkInverse },
+  simRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  simCover: { width: 38, height: 38, borderRadius: 8, backgroundColor: colors.indigo, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  simCoverImg: { width: 38, height: 38 },
+  simAuthor: { fontSize: 11, color: colors.mutedOnDark, marginTop: 1 },
 });

@@ -1,7 +1,9 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, type Position } from './api';
+import { api, type CatalogRef, type Position } from './api';
+import { playChime } from './chime';
 import { fetchItem } from './content';
+import { clearAll as clearPrefetch, localFor, prefetch } from './prefetch';
 import { buildQueue, type NowPlaying, type Track } from './queue';
 import type { ItemType, Lang } from './types';
 
@@ -17,6 +19,9 @@ interface PlayerState {
   durationSec: number;
   rate: number;
   loading: boolean;
+  upNext: CatalogRef[];
+  autoplay: boolean;
+  setAutoplay: (on: boolean) => void;
   playItem: (kind: ItemType, id: string, opts?: PlayItemOpts) => Promise<void>;
   toggle: () => void;
   seek: (sec: number) => void;
@@ -45,15 +50,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [index, setIndex] = useState(0);
   const [rate, setRateState] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [upNext, setUpNext] = useState<CatalogRef[]>([]);
+  const [autoplay, setAutoplayState] = useState(true);
 
   const pendingSeek = useRef<number | null>(null);
   const lastSaved = useRef(0);
   const finished = useRef(false);
+  const preparedNext = useRef<{ kind: ItemType; id: string } | null>(null);
+  const autoplayRef = useRef(true);
 
   useEffect(() => {
-    // doNotMix is required by expo-audio for lock-screen controls.
-    setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'doNotMix' }).catch(() => {});
+    // shouldPlayInBackground keeps audio alive when the screen locks or the app
+    // backgrounds (without it, playback suspends until the lock-screen control is
+    // tapped). doNotMix is required by expo-audio for lock-screen controls.
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'doNotMix' }).catch(() => {});
+    // Wipe any prefetched audio left over from a previous run.
+    clearPrefetch();
   }, []);
+
+  const setAutoplay = useCallback((on: boolean) => { autoplayRef.current = on; setAutoplayState(on); }, []);
 
   const setLockScreen = useCallback((np: NowPlaying, track: Track) => {
     try {
@@ -74,9 +89,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       finished.current = false;
       pendingSeek.current = startAt;
       setIndex(i);
-      player.replace({ uri: t.url });
+      // Play from the prefetched local copy if we have one — instant, no buffer.
+      player.replace({ uri: localFor(t.url) ?? t.url });
       player.play();
       setLockScreen(np, t);
+      // Warm the next chapter well before this one ends, so journeys never stall.
+      if (np.kind === 'journey') {
+        const nextUrl = tracks[i + 1]?.url;
+        if (nextUrl) prefetch(nextUrl);
+      }
     },
     [player, setLockScreen]
   );
@@ -104,7 +125,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (opts.startIndex == null && opts.startAtSec == null) {
           const prog = await api.getProgress(kind, id).catch(() => ({ position: null as Position | null }));
           const p = prog.position;
-          if (p) {
+          // A finished item (replayed from search/detail) starts fresh from the
+          // top — otherwise we'd resume at the very end and instantly re-finish.
+          if (p && p.completed !== true) {
             if (kind === 'journey' && p.chapterSeq != null) {
               const fi = tracks.findIndex((t) => t.chapterSeq === p.chapterSeq);
               if (fi >= 0) { startIndex = fi; startAt = p.audioSec ?? 0; }
@@ -122,6 +145,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     },
     [loadTrack]
   );
+
+  // Up-next ("more like this") — fetched once per item. We also prepare and
+  // prefetch the top result so end-of-item autoplay (and the jump to a fresh
+  // journey when one ends) begins with no buffering.
+  useEffect(() => {
+    if (!nowPlaying) { setUpNext([]); preparedNext.current = null; return; }
+    let cancelled = false;
+    const { kind, itemId, lang } = nowPlaying;
+    api
+      .getSimilar(kind, itemId, lang)
+      .then(async (r) => {
+        if (cancelled) return;
+        setUpNext(r.items);
+        const first = r.items[0];
+        preparedNext.current = first ? { kind: first.kind, id: first.id } : null;
+        if (first) {
+          try {
+            const row = await fetchItem(first.kind, first.id);
+            const { tracks } = buildQueue(first.kind, row, lang);
+            if (tracks[0]?.url) prefetch(tracks[0].url);
+          } catch {
+            /* prefetch is best-effort */
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [nowPlaying?.kind, nowPlaying?.itemId, nowPlaying?.lang]);
 
   // Throttled progress save (~every 5s of playback).
   useEffect(() => {
@@ -142,8 +193,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!status.didJustFinish || finished.current || !nowPlaying) return;
     finished.current = true;
     if (nowPlaying.kind === 'journey' && index < queue.length - 1) {
-      loadTrack(queue, index + 1, 0, nowPlaying);
+      loadTrack(queue, index + 1, 0, nowPlaying); // next chapter (already prefetched)
     } else {
+      // Whole item finished: mark complete, ring the chime, then autoplay the
+      // prepared up-next (prefetched, so it starts instantly) if enabled.
       const t = queue[index];
       api.saveProgress(nowPlaying.kind, nowPlaying.itemId, {
         audioSec: status.duration,
@@ -151,8 +204,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         completed: true,
         ...(nowPlaying.kind === 'journey' ? { chapterSeq: t?.chapterSeq, totalChapters: queue.length } : {}),
       }).catch(() => {});
+      playChime();
+      const nx = preparedNext.current;
+      if (autoplayRef.current && nx) {
+        // let the chime breathe before the next piece begins
+        setTimeout(() => playItem(nx.kind, nx.id), 1200);
+      }
     }
-  }, [status.didJustFinish, nowPlaying, queue, index, status.duration, loadTrack]);
+  }, [status.didJustFinish, nowPlaying, queue, index, status.duration, loadTrack, playItem]);
 
   const value: PlayerState = {
     nowPlaying,
@@ -164,6 +223,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     durationSec: status.duration,
     rate,
     loading,
+    upNext,
+    autoplay,
+    setAutoplay,
     playItem,
     toggle: () => (status.playing ? player.pause() : player.play()),
     seek: (sec) => player.seekTo(Math.max(0, sec)),
@@ -177,6 +239,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setNowPlaying(null);
       setQueue([]);
       setIndex(0);
+      setUpNext([]);
+      preparedNext.current = null;
+      clearPrefetch();
     },
     setRate: (r) => { player.setPlaybackRate(r); setRateState(r); },
     setLang: (l) => {

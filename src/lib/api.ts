@@ -219,6 +219,8 @@ export const api = {
   getProgress: (kind: ItemType, id: string) =>
     get<{ position: Position | null; updated_at: string | null }>(`/v1/progress/${kind}/${id}`),
   getContinue: () => get<{ items: ContinueItem[] }>('/v1/progress'),
+  getSimilar: (kind: ItemType, id: string, lang: Lang) =>
+    get<{ items: CatalogRef[] }>(`/v1/similar/${kind}/${id}?lang=${lang}`),
   getThreads: (lang: Lang) => get<{ threads: ThreadGroup[] }>(`/v1/threads?lang=${lang}`),
 
   // marginalia + resonance
