@@ -1,14 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter, type Href } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayer } from '@/lib/player';
 import { colors, serif } from '@/lib/theme';
 
 const RATES = [1, 1.25, 1.5, 1.75];
-const SLEEPS = [0, 15, 30, 45];
+const SLEEPS = [0, 5, 10, 15, 30, 45];
 const fmt = (s: number) => {
   if (!isFinite(s) || s < 0) s = 0;
   return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
@@ -19,14 +19,62 @@ export default function NowPlaying() {
   const router = useRouter();
   const p = usePlayer();
   const barWidth = useRef(1);
-  const [sleep, setSleep] = useState(0);
 
-  // Sleep timer — pause after N minutes.
+  // ── Sleep timer ───────────────────────────────────────────────────────
+  // sleepEnd is an absolute timestamp (Date.now() + minutes*60000).
+  // A 1-second interval counts down the display; when it hits 0, we pause.
+  const [sleepEnd, setSleepEnd] = useState<number | null>(null);
+  const [sleepLeft, setSleepLeft] = useState(0); // seconds remaining
+  const sleepChoice = useRef(0); // last chosen option (for cycling the chip)
+  const toggleRef = useRef(p.toggle);
+  toggleRef.current = p.toggle;
+  const playingRef = useRef(p.playing);
+  playingRef.current = p.playing;
+
+  const startSleep = useCallback((minutes: number) => {
+    sleepChoice.current = minutes;
+    if (minutes === 0) {
+      setSleepEnd(null);
+      setSleepLeft(0);
+      return;
+    }
+    const end = Date.now() + minutes * 60_000;
+    setSleepEnd(end);
+    setSleepLeft(minutes * 60);
+  }, []);
+
+  // Tick every second while a sleep timer is active.
   useEffect(() => {
-    if (!sleep) return;
-    const id = setTimeout(() => { if (p.playing) p.toggle(); }, sleep * 60_000);
-    return () => clearTimeout(id);
-  }, [sleep, p]);
+    if (sleepEnd == null) return;
+    const id = setInterval(() => {
+      const remaining = Math.max(0, Math.round((sleepEnd - Date.now()) / 1000));
+      setSleepLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(id);
+        setSleepEnd(null);
+        setSleepLeft(0);
+        sleepChoice.current = 0;
+        // Pause playback
+        if (playingRef.current) toggleRef.current();
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sleepEnd]);
+
+  const cycleSleep = () => {
+    const idx = SLEEPS.indexOf(sleepChoice.current);
+    const next = SLEEPS[(idx + 1) % SLEEPS.length];
+    startSleep(next);
+  };
+
+  const sleepActive = sleepEnd != null && sleepLeft > 0;
+  const sleepLabel = sleepActive
+    ? sleepLeft >= 60
+      ? `${Math.floor(sleepLeft / 60)}:${(sleepLeft % 60).toString().padStart(2, '0')}`
+      : `${sleepLeft}s`
+    : 'Sleep';
+
+  // ─────────────────────────────────────────────────────────────────────
 
   if (!p.nowPlaying || !p.current) {
     return (
@@ -84,9 +132,9 @@ export default function NowPlaying() {
         <Pressable style={styles.chip} onPress={() => p.setRate(RATES[(RATES.indexOf(p.rate) + 1) % RATES.length])}>
           <Text style={styles.chipText}>{p.rate}×</Text>
         </Pressable>
-        <Pressable style={[styles.chip, sleep > 0 && styles.chipOn]} onPress={() => setSleep(SLEEPS[(SLEEPS.indexOf(sleep) + 1) % SLEEPS.length])}>
-          <Ionicons name="moon" size={12} color={sleep > 0 ? colors.accent : colors.mutedOnDark} />
-          <Text style={[styles.chipText, sleep > 0 && { color: colors.accent }]}>{sleep > 0 ? `${sleep}m` : 'Sleep'}</Text>
+        <Pressable style={[styles.chip, sleepActive && styles.chipOn]} onPress={cycleSleep}>
+          <Ionicons name="moon" size={12} color={sleepActive ? colors.accent : colors.mutedOnDark} />
+          <Text style={[styles.chipText, sleepActive && { color: colors.accent }]}>{sleepLabel}</Text>
         </Pressable>
         <Pressable style={styles.chip} onPress={() => router.push({ pathname: '/item/[type]/[id]', params: { type: p.nowPlaying!.kind, id: p.nowPlaying!.itemId } } as unknown as Href)}>
           <Ionicons name="book-outline" size={12} color={colors.mutedOnDark} />
