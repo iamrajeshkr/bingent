@@ -75,6 +75,9 @@ export interface RecItem extends CatalogRef {
   score: number;
   reason: string;
 }
+export interface BrowseItem extends CatalogRef {
+  category: string | null;
+}
 export interface AskTurn {
   role: 'user' | 'model';
   text: string;
@@ -212,6 +215,10 @@ export const api = {
   logEvents: (events: EventInput[]) => post<{ accepted: number }>('/v1/events', { events }),
 
   getCatalog: () => get<{ bites: any[]; journeys: any[]; summaries: any[] }>('/v1/catalog'),
+  getBrowse: (kind: 'all' | ItemType, page: number, limit = 30) =>
+    get<{ items: BrowseItem[]; page: number; hasMore: boolean }>(
+      `/v1/catalog/browse?kind=${kind}&page=${page}&limit=${limit}`
+    ),
   getItem: (kind: ItemType, id: string) => get<any>(`/v1/catalog/${kind}/${id}`),
 
   saveProgress: (kind: ItemType, id: string, position: Position) =>
