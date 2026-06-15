@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type ContinueItem, type RecItem, type ThreadGroup } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
 import { usePrefs } from '@/lib/prefs';
+import { ensureCatalog } from '@/lib/use-catalog';
+import { Skeleton } from '@/components/skeleton';
 import { colors, serif, typeColors } from '@/lib/theme';
 import { WEATHERS, WEATHER_PHRASE, type Weather } from '@/lib/weather';
 
@@ -30,14 +32,17 @@ export default function InnerWeatherHome() {
   const [error, setError] = useState<string | null>(null);
   const [cont, setCont] = useState<ContinueItem[]>([]);
   const [threadList, setThreadList] = useState<ThreadGroup[]>([]);
+  const [hydrated, setHydrated] = useState(false); // first load settled — gate skeletons
 
   // Refresh "Continue" and "Wander" each time the home regains focus (e.g. after
   // finishing something) so freshly-completed items drop out of both. The theme
   // search is server-cached, so this is a cheap call.
   useFocusEffect(
     useCallback(() => {
-      api.getContinue().then((r) => setCont(r.items.filter((i) => !i.position?.completed))).catch(() => {});
-      api.getThreads(prefs.language).then((r) => setThreadList(r.threads)).catch(() => {});
+      ensureCatalog().catch(() => {}); // warm the cache so the first tap-to-play is instant
+      const a = api.getContinue().then((r) => setCont(r.items.filter((i) => !i.position?.completed))).catch(() => {});
+      const b = api.getThreads(prefs.language).then((r) => setThreadList(r.threads)).catch(() => {});
+      Promise.allSettled([a, b]).finally(() => setHydrated(true));
     }, [prefs.language])
   );
 
@@ -91,6 +96,22 @@ export default function InnerWeatherHome() {
         <Text style={styles.hint}>Tap how it feels — your page changes with it.</Text>
       )}
 
+      {!hydrated && (
+        <View style={{ marginTop: 20 }}>
+          <Skeleton width={96} height={16} />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <Skeleton width={190} height={104} radius={14} />
+            <Skeleton width={190} height={104} radius={14} />
+          </View>
+          <Skeleton width={96} height={16} style={{ marginTop: 26 }} />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <Skeleton width={132} height={120} radius={12} />
+            <Skeleton width={132} height={120} radius={12} />
+            <Skeleton width={132} height={120} radius={12} />
+          </View>
+        </View>
+      )}
+
       {cont.length > 0 && (
         <View style={{ marginTop: 18 }}>
           <Text style={styles.section}>Continue</Text>
@@ -119,7 +140,15 @@ export default function InnerWeatherHome() {
                   <View style={styles.track}>
                     <View style={[styles.trackFill, { width: `${Math.round(ratio * 100)}%`, backgroundColor: typeColors[it.kind] }]} />
                   </View>
-                  <Pressable style={styles.resume} onPress={() => player.playItem(it.kind, it.id, { lang: prefs.language })}>
+                  <Pressable
+                    style={styles.resume}
+                    onPress={() =>
+                      player.playItem(it.kind, it.id, {
+                        lang: prefs.language,
+                        // We already know where they left off — skip the extra lookup.
+                        ...(it.kind !== 'journey' ? { startAtSec: p.audioSec ?? 0 } : {}),
+                      })
+                    }>
                     <Ionicons name="play" size={11} color="#FFFFFF" />
                     <Text style={styles.resumeText}>Resume</Text>
                   </Pressable>

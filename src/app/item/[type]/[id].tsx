@@ -9,6 +9,8 @@ import { AskLineSheet } from '@/components/ask-line-sheet';
 import { api, type Position } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
 import { fetchItem, journeyChapters } from '@/lib/content';
+import { getCachedRow } from '@/lib/use-catalog';
+import { Skeleton, SkeletonLines } from '@/components/skeleton';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif, typeColors } from '@/lib/theme';
 import type { Bite, ItemType, Journey, JourneyChapter, Lang, Summary } from '@/lib/types';
@@ -31,9 +33,14 @@ export default function ItemDetail() {
   const [chapter, setChapter] = useState<JourneyChapter | null>(null);
   const [askQuote, setAskQuote] = useState<string | null>(null);
   const [resumePos, setResumePos] = useState<Position | null>(null);
+  const [loaded, setLoaded] = useState(false); // full row (with body text) has arrived
 
   useEffect(() => {
-    fetchItem(type, id).then(setRow).catch((e) => setError(String(e?.message ?? e)));
+    // Paint instantly from the cached list row (header/cover) if we have it, then
+    // swap in the full row (body text, chapters) when the fetch lands.
+    const seed = getCachedRow(type, id);
+    if (seed) setRow(seed);
+    fetchItem(type, id).then((r) => { setRow(r); setLoaded(true); }).catch((e) => setError(String(e?.message ?? e)));
     api.getProgress(type, id).then((r) => setResumePos(r.position)).catch(() => {});
   }, [type, id]);
 
@@ -53,17 +60,18 @@ export default function ItemDetail() {
   const playableIndex = (seq: number) => chapters.filter((c) => c.url).findIndex((c) => c.seq === seq);
   const isThis = player.nowPlaying?.itemId === id;
 
-  // Tap a chapter → show its text and play it through the global player.
+  // Tap a chapter → show its text and play it through the global player. Hand the
+  // already-loaded row to the player so it doesn't re-fetch the whole journey.
   const selectChapter = (c: JourneyChapter) => {
     setChapter(c);
-    player.playItem('journey', id, { lang, startIndex: Math.max(0, playableIndex(c.seq)) });
+    player.playItem('journey', id, { lang, startIndex: Math.max(0, playableIndex(c.seq)), row });
   };
 
   // Listen / pause this item via the global player.
   const listen = () => {
     if (isThis) return player.toggle();
-    if (isJourney) player.playItem('journey', id, { lang, startIndex: chapter ? Math.max(0, playableIndex(chapter.seq)) : 0 });
-    else player.playItem(type, id, { lang });
+    if (isJourney) player.playItem('journey', id, { lang, startIndex: chapter ? Math.max(0, playableIndex(chapter.seq)) : 0, row });
+    else player.playItem(type, id, { lang, row });
   };
 
   if (error) {
@@ -75,8 +83,12 @@ export default function ItemDetail() {
   }
   if (!row) {
     return (
-      <View style={[styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator color={colors.accent} />
+      <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 24, paddingHorizontal: 20, gap: 16 }}>
+        <Skeleton width={120} height={120} radius={12} />
+        <Skeleton width="70%" height={22} />
+        <Skeleton width="40%" height={14} />
+        <View style={{ height: 12 }} />
+        <SkeletonLines count={8} />
       </View>
     );
   }
@@ -182,10 +194,12 @@ export default function ItemDetail() {
           {/* Text is always shown; the audio player docks alongside it (below). */}
           {bodyText ? (
             <MarkdownText content={bodyText} onAskLine={setAskQuote} />
-          ) : (
+          ) : loaded ? (
             <Text style={styles.empty}>
               {lang === 'hi' ? 'इस भाषा में पाठ उपलब्ध नहीं है।' : 'No text available for this language.'}
             </Text>
+          ) : (
+            <View style={{ marginTop: 6 }}><SkeletonLines count={7} /></View>
           )}
 
           {isJourney && (

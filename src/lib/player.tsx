@@ -5,9 +5,10 @@ import { playChime } from './chime';
 import { fetchItem } from './content';
 import { clearAll as clearPrefetch, localFor, prefetch } from './prefetch';
 import { buildQueue, type NowPlaying, type Track } from './queue';
+import { getCachedRow } from './use-catalog';
 import type { ItemType, Lang } from './types';
 
-interface PlayItemOpts { lang?: Lang; startIndex?: number; startAtSec?: number }
+interface PlayItemOpts { lang?: Lang; startIndex?: number; startAtSec?: number; row?: any; fresh?: boolean }
 
 interface PlayerState {
   nowPlaying: NowPlaying | null;
@@ -116,13 +117,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       try {
         const lang = opts.lang ?? 'en';
-        const row = await fetchItem(kind, id);
+        // Resolve the content row with the fewest round-trips: a row handed in by
+        // the caller (e.g. the open detail screen) > the in-memory catalog (covers
+        // bites/summaries, which carry audio in the list payload) > a fetch.
+        // Journeys need their chapter audio, which the catalog list omits.
+        const provided = opts.row ?? getCachedRow(kind, id);
+        const playable =
+          provided?.audio && (kind !== 'journey' || provided.audio.en?.chapters || provided.audio.hi?.chapters);
+        const row = playable ? provided : await fetchItem(kind, id);
         const { nowPlaying: np, tracks } = buildQueue(kind, row, lang);
         if (!tracks.length) return; // no audio for this item/lang
 
         let startIndex = opts.startIndex ?? 0;
         let startAt = opts.startAtSec ?? 0;
-        if (opts.startIndex == null && opts.startAtSec == null) {
+        // Skip the saved-position lookup when the caller told us where to start
+        // (Continue / read-along) or asked for a fresh start (autoplay).
+        if (opts.startIndex == null && opts.startAtSec == null && !opts.fresh) {
           const prog = await api.getProgress(kind, id).catch(() => ({ position: null as Position | null }));
           const p = prog.position;
           // A finished item (replayed from search/detail) starts fresh from the
@@ -207,8 +217,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playChime();
       const nx = preparedNext.current;
       if (autoplayRef.current && nx) {
-        // let the chime breathe before the next piece begins
-        setTimeout(() => playItem(nx.kind, nx.id), 1200);
+        // let the chime breathe; start fresh (skip progress lookup) and lean on
+        // the prefetched audio so the next piece begins instantly
+        setTimeout(() => playItem(nx.kind, nx.id, { fresh: true }), 1200);
       }
     }
   }, [status.didJustFinish, nowPlaying, queue, index, status.duration, loadTrack, playItem]);
