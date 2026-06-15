@@ -16,8 +16,9 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: colors.bg },
-            }}
-          />
+            }}>
+            <Stack.Screen name="player" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          </Stack>
           {/* Global, route-aware mini-player overlay — shows on detail screens too. */}
           <MiniPlayer />
         </View>
