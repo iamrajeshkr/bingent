@@ -14,7 +14,7 @@ import { colors, serif } from '@/lib/theme';
 const TAB_ROUTES = new Set(['/', '/discover', '/you']);
 // Hide entirely on these (clean input screens, immersive screens, the full player).
 const HIDDEN_EXACT = new Set(['/ask']);
-const HIDDEN_PREFIX = ['/player', '/auth', '/onboarding', '/threshold'];
+const HIDDEN_PREFIX = ['/player', '/library', '/auth', '/onboarding', '/threshold'];
 
 const SCREEN_W = Dimensions.get('window').width;
 const DISMISS_DX = 90; // swipe left past this → dismiss

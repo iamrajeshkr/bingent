@@ -102,18 +102,18 @@ export default function You() {
         <Text style={styles.sectionMeta}>{finished.length} on the shelf</Text>
       </View>
       <Text style={styles.lede}>Every finished read becomes a spine — you’re building something that lasts.</Text>
-      <View style={styles.shelf}>
+      <Pressable style={styles.shelf} onPress={() => router.push('/library' as Href)}>
         {finished.length === 0 ? (
           <Plank items={[]} ghosts={5} />
         ) : (
-          chunk(finished, 9).map((row, i, all) => (
-            <Plank key={i} items={row} ghosts={i === all.length - 1 ? 3 : 0} striped={i === all.length - 1 && inProgress > 0} />
-          ))
+          // a small preview rack; the full multi-rack shelf opens full-screen
+          <Plank items={finished.slice(0, 9)} ghosts={Math.max(0, 3 - 0)} striped={inProgress > 0} />
         )}
-        <Text style={styles.shelfNote}>
-          {inProgress > 0 ? `${inProgress} in progress · ` : ''}keep reading to add the next spine
-        </Text>
-      </View>
+        <View style={styles.shelfOpen}>
+          <Text style={styles.shelfNote}>{inProgress > 0 ? `${inProgress} in progress · ` : ''}open your shelf</Text>
+          <Ionicons name="chevron-forward" size={15} color={colors.muted} />
+        </View>
+      </Pressable>
 
       {/* stats */}
       <View style={styles.statsRow}>
@@ -257,7 +257,8 @@ const styles = StyleSheet.create({
   plank: { height: 11, borderRadius: 3, backgroundColor: '#B89A6E' },
   ghostSpine: { width: 19, height: 56, borderRadius: 3, borderWidth: 1.5, borderColor: colors.track, borderStyle: 'dashed' },
   stripedSpine: { width: 23, height: 78, borderRadius: 3, backgroundColor: '#4d4368', opacity: 0.55 },
-  shelfNote: { textAlign: 'center', fontSize: 11.5, color: colors.muted, marginTop: 8 },
+  shelfOpen: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 8 },
+  shelfNote: { textAlign: 'center', fontSize: 11.5, color: colors.muted },
 
   statsRow: { flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 16 },
   stat: { flex: 1, backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
