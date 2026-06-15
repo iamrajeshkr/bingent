@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type ContinueItem, type RecItem, type ThreadGroup } from '@/lib/api';
+import { usePlayer } from '@/lib/player';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif, typeColors } from '@/lib/theme';
 import { WEATHERS, WEATHER_PHRASE, type Weather } from '@/lib/weather';
@@ -21,6 +22,7 @@ export default function InnerWeatherHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const prefs = usePrefs();
+  const player = usePlayer();
 
   const [weather, setWeather] = useState<Weather | null>(null);
   const [recs, setRecs] = useState<RecItem[]>([]);
@@ -108,16 +110,20 @@ export default function InnerWeatherHome() {
                 ? `Ch ${p.chapterSeq ?? 0}/${p.totalChapters}`
                 : `${Math.round(ratio * 100)}%`;
               return (
-                <Pressable
-                  key={`${it.kind}-${it.id}`}
-                  style={styles.continueCard}
-                  onPress={() => router.push({ pathname: '/item/[type]/[id]', params: { type: it.kind, id: it.id } })}>
-                  <Text style={[styles.tag, { color: typeColors[it.kind] }]}>{TYPE_LABEL[it.kind]} · {sub}</Text>
-                  <Text style={styles.continueTitle} numberOfLines={2}>{it.title}</Text>
+                <View key={`${it.kind}-${it.id}`} style={styles.continueCard}>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/item/[type]/[id]', params: { type: it.kind, id: it.id } })}>
+                    <Text style={[styles.tag, { color: typeColors[it.kind] }]}>{TYPE_LABEL[it.kind]} · {sub}</Text>
+                    <Text style={styles.continueTitle} numberOfLines={2}>{it.title}</Text>
+                  </Pressable>
                   <View style={styles.track}>
                     <View style={[styles.trackFill, { width: `${Math.round(ratio * 100)}%`, backgroundColor: typeColors[it.kind] }]} />
                   </View>
-                </Pressable>
+                  <Pressable style={styles.resume} onPress={() => player.playItem(it.kind, it.id, { lang: prefs.language })}>
+                    <Ionicons name="play" size={11} color="#FFFFFF" />
+                    <Text style={styles.resumeText}>Resume</Text>
+                  </Pressable>
+                </View>
               );
             })}
           </ScrollView>
@@ -255,6 +261,8 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   continueTitle: { fontFamily: serif, fontSize: 14.5, lineHeight: 19, color: colors.ink, marginTop: 3, marginBottom: 8, minHeight: 38 },
+  resume: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: colors.indigo, borderRadius: 999, paddingVertical: 7, marginTop: 10 },
+  resumeText: { color: '#FFFFFF', fontSize: 11.5, fontWeight: '500' },
   threadTitle: { fontFamily: serif, fontSize: 14.5, color: colors.ink, marginBottom: 8 },
   threadCard: { width: 132, backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 10 },
   threadCover: { height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },

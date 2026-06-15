@@ -158,15 +158,9 @@ export default function ItemDetail() {
             })}
             <View style={{ flex: 1 }} />
             {audioUrl ? (
-              <Pressable
-                onPress={listen}
-                style={[styles.pill, styles.pillIdle, { flexDirection: 'row', gap: 5, alignItems: 'center' }]}>
-                <Ionicons
-                  name={isThis && player.playing ? 'pause' : 'headset-outline'}
-                  size={13}
-                  color={colors.ink}
-                />
-                <Text style={styles.pillText}>{isThis && player.playing ? 'Playing' : 'Listen'}</Text>
+              <Pressable onPress={listen} style={styles.listenBtn}>
+                <Ionicons name={isThis && player.playing ? 'pause' : 'play'} size={14} color="#FFFFFF" />
+                <Text style={styles.listenText}>{isThis && player.playing ? 'Playing' : isThis ? 'Resume' : 'Listen'}</Text>
               </Pressable>
             ) : null}
             {type === 'byte' && (row as Bite).difficulty ? (
@@ -243,6 +237,8 @@ const styles = StyleSheet.create({
   pillActive: { backgroundColor: colors.ink },
   pillIdle: { backgroundColor: colors.card, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   pillText: { fontSize: 12, color: colors.ink },
+  listenBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.accent, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 15 },
+  listenText: { fontSize: 12.5, color: '#FFFFFF', fontWeight: '500' },
   diff: { backgroundColor: colors.accentSoft, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 9 },
   diffText: { fontSize: 10.5, color: colors.accent, letterSpacing: 0.5 },
   chapterBanner: { marginBottom: 12 },
