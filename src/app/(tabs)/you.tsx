@@ -48,10 +48,30 @@ export default function You() {
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 40 }}>
-      <Text style={styles.h1}>You</Text>
+      
+      <GardenSection daysUsed={prefs.daysUsed} />
+
+      {/* Living Library — the shelf you're filling */}
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>Your library</Text>
+        <Text style={styles.sectionMeta}>{finished.length} on the shelf</Text>
+      </View>
+      <Text style={styles.lede}>Every finished read becomes a spine — you’re building something that lasts.</Text>
+      <Pressable style={styles.shelf} onPress={() => router.push('/library' as Href)}>
+        {finished.length === 0 ? (
+          <Plank items={[]} ghosts={5} />
+        ) : (
+          // a small preview rack; the full multi-rack shelf opens full-screen
+          <Plank items={finished.slice(0, 9)} ghosts={Math.max(0, 3 - 0)} striped={inProgress > 0} />
+        )}
+        <View style={styles.shelfOpen}>
+          <Text style={styles.shelfNote}>{inProgress > 0 ? `${inProgress} in progress · ` : ''}open your shelf</Text>
+          <Ionicons name="chevron-forward" size={15} color={colors.muted} />
+        </View>
+      </Pressable>
 
       {/* Inner Sky — who you're becoming */}
-      <Pressable onPress={() => router.push('/mirror' as Href)} style={styles.sky}>
+      <Pressable onPress={() => router.push('/mirror' as Href)} style={[styles.sky, { marginTop: 18 }]}>
         <View style={styles.skyHead}>
           <Text style={styles.skyTag}>The sky you’re becoming</Text>
           <Text style={styles.skyCount}>{finished.length} {finished.length === 1 ? 'star' : 'stars'} lit</Text>
@@ -96,42 +116,12 @@ export default function You() {
         <Text style={styles.skyLink}>Tap for your portrait →</Text>
       </Pressable>
 
-      {/* Living Library — the shelf you're filling */}
-      <View style={styles.sectionRow}>
-        <Text style={styles.section}>Your library</Text>
-        <Text style={styles.sectionMeta}>{finished.length} on the shelf</Text>
-      </View>
-      <Text style={styles.lede}>Every finished read becomes a spine — you’re building something that lasts.</Text>
-      <Pressable style={styles.shelf} onPress={() => router.push('/library' as Href)}>
-        {finished.length === 0 ? (
-          <Plank items={[]} ghosts={5} />
-        ) : (
-          // a small preview rack; the full multi-rack shelf opens full-screen
-          <Plank items={finished.slice(0, 9)} ghosts={Math.max(0, 3 - 0)} striped={inProgress > 0} />
-        )}
-        <View style={styles.shelfOpen}>
-          <Text style={styles.shelfNote}>{inProgress > 0 ? `${inProgress} in progress · ` : ''}open your shelf</Text>
-          <Ionicons name="chevron-forward" size={15} color={colors.muted} />
-        </View>
-      </Pressable>
-
       {/* stats */}
       <View style={styles.statsRow}>
         <Stat n={garden?.practices_kept ?? 0} label="practices kept" />
         <Stat n={garden?.pages_read ?? 0} label="pages read" />
         <Stat n={garden?.days_used ?? prefs.daysUsed.length} label="days with Kitab" />
       </View>
-
-      {/* quiet streak */}
-      {streak > 0 && (
-        <View style={styles.streak}>
-          <Ionicons name="moon" size={18} color={colors.accent} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.streakTitle}>{streak} {streak === 1 ? 'day' : 'days'} returning</Text>
-            <Text style={styles.streakSub}>Miss a day and nothing wilts — Kitab simply waits for you.</Text>
-          </View>
-        </View>
-      )}
 
       {/* links */}
       <Pressable style={styles.link} onPress={() => router.push('/letter' as Href)}>
@@ -174,6 +164,116 @@ export default function You() {
         <Text style={[styles.redoText, { color: colors.accent }]}>Sign out</Text>
       </Pressable>
     </ScrollView>
+  );
+}
+
+function GardenSection({ daysUsed }: { daysUsed: string[] }) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  
+  const weekDates = (() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(now.setDate(diff));
+    
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      week.push(d.toISOString().slice(0, 10));
+    }
+    return week;
+  })();
+
+  const usedSet = new Set(daysUsed);
+  const activeCount = weekDates.filter(d => usedSet.has(d)).length;
+
+  const m = new Date().getMonth() + 1;
+  const season = m === 12 || m <= 2 ? 'Winter' : m === 3 ? 'Early spring' : m <= 5 ? 'Late spring' : m <= 7 ? 'Early summer' : m === 8 ? 'Late summer' : 'Autumn';
+
+  const daysLabel = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  return (
+    <View style={styles.gardenSection}>
+      <View style={styles.gardenHeaderRow}>
+        <Text style={styles.h1}>Your garden</Text>
+        <Text style={styles.gardenSeason}>{season}</Text>
+      </View>
+      <Text style={styles.gardenLede}>What you read takes root here. Tend it, and watch the season turn.</Text>
+
+      <View style={styles.gardenGraphic}>
+        <View style={styles.gardenSunHalo}>
+          <View style={styles.gardenSun} />
+        </View>
+        
+        {/* Only show full growth when active */}
+        {activeCount > 0 && (
+          <View style={[styles.gardenTree, { left: 40, bottom: 36 }]}>
+            <View style={styles.gardenTrunk} />
+            <View style={[styles.gardenLeaves, { width: 56, height: 56, borderRadius: 28, backgroundColor: '#4A8F86', left: -24, top: -46 }]} />
+            <View style={[styles.gardenLeaves, { width: 44, height: 44, borderRadius: 22, backgroundColor: '#346B64', left: -8, top: -30 }]} />
+          </View>
+        )}
+
+        <View style={[styles.gardenFlower, { left: 120, bottom: 36, height: activeCount > 2 ? 40 : 25 }]}>
+          <View style={[styles.gardenStem, { height: activeCount > 2 ? 40 : 25 }]} />
+          {activeCount > 2 && <View style={styles.gardenFlowerHead} />}
+        </View>
+
+        <View style={[styles.gardenFlower, { left: 160, bottom: 36, height: 20 }]}>
+          <View style={[styles.gardenStem, { height: 20 }]} />
+        </View>
+
+        <View style={[styles.gardenFlower, { left: 200, bottom: 36, height: activeCount > 4 ? 45 : 30 }]}>
+          <View style={[styles.gardenStem, { height: activeCount > 4 ? 45 : 30 }]} />
+          {activeCount > 4 && <View style={styles.gardenFlowerHead} />}
+        </View>
+
+        <View style={[styles.gardenFlower, { left: 240, bottom: 36, height: 25 }]}>
+          <View style={[styles.gardenStem, { height: 25 }]} />
+        </View>
+
+        {activeCount > 1 && (
+          <View style={[styles.gardenTree, { right: 50, bottom: 36, transform: [{scale: 0.85}] }]}>
+            <View style={styles.gardenTrunk} />
+            <View style={[styles.gardenLeaves, { width: 56, height: 56, borderRadius: 28, backgroundColor: '#4A8F86', left: -24, top: -46 }]} />
+            <View style={[styles.gardenLeaves, { width: 44, height: 44, borderRadius: 22, backgroundColor: '#346B64', left: -8, top: -30 }]} />
+          </View>
+        )}
+
+        <View style={styles.gardenGround} />
+      </View>
+
+      <View style={styles.tendingCard}>
+        <View style={styles.tendingCardHead}>
+          <Text style={styles.tendingCardTitle}>{activeCount} days of tending</Text>
+          <Text style={styles.tendingCardMeta}>this week</Text>
+        </View>
+        <View style={styles.tendingDaysRow}>
+          {weekDates.map((dateStr, i) => {
+            const active = usedSet.has(dateStr);
+            const isToday = dateStr === todayIso;
+            const isFuture = dateStr > todayIso;
+
+            return (
+              <View key={dateStr} style={styles.tendingDayCol}>
+                <View style={[
+                  styles.tendingCircle,
+                  active ? styles.tendingCircleActive :
+                  isToday ? styles.tendingCircleToday :
+                  isFuture ? styles.tendingCircleFuture : styles.tendingCircleMissed
+                ]}>
+                  {active && <Ionicons name="leaf-outline" size={16} color="#F3E0D3" />}
+                  {!active && isToday && <View style={styles.tendingDot} />}
+                </View>
+                <Text style={styles.tendingDayLabel}>{daysLabel[i]}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <Text style={styles.tendingFooter}>Miss a day and nothing wilts — your garden simply waits for you.</Text>
+      </View>
+    </View>
   );
 }
 
@@ -281,4 +381,36 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 12.5, color: colors.ink },
   redo: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
   redoText: { fontSize: 12.5, color: colors.muted },
+
+  // Garden Section Styles
+  gardenSection: { marginBottom: 20 },
+  gardenHeaderRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 },
+  gardenSeason: { fontSize: 13, color: colors.muted, fontWeight: '500' },
+  gardenLede: { fontSize: 13, color: colors.muted, fontStyle: 'italic', fontFamily: serif, marginBottom: 14, marginTop: -4 },
+  
+  gardenGraphic: { backgroundColor: '#C8B699', height: 160, borderRadius: 18, overflow: 'hidden', position: 'relative', marginBottom: 14 },
+  gardenGround: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 36, backgroundColor: '#837055' },
+  gardenSunHalo: { position: 'absolute', top: 16, right: 24, width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(215, 169, 83, 0.3)', alignItems: 'center', justifyContent: 'center' },
+  gardenSun: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#CBA14C' },
+  gardenTree: { position: 'absolute' },
+  gardenTrunk: { width: 6, height: 26, backgroundColor: '#574231', borderRadius: 3 },
+  gardenLeaves: { position: 'absolute' },
+  gardenFlower: { position: 'absolute', alignItems: 'center' },
+  gardenStem: { width: 3, backgroundColor: '#586A45', borderRadius: 1.5 },
+  gardenFlowerHead: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#8D70A3', position: 'absolute', top: -6 },
+  
+  tendingCard: { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 16 },
+  tendingCardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 },
+  tendingCardTitle: { fontSize: 15, color: colors.ink, fontWeight: '600' },
+  tendingCardMeta: { fontSize: 12, color: colors.muted },
+  tendingDaysRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 16 },
+  tendingDayCol: { alignItems: 'center', gap: 6 },
+  tendingCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tendingCircleActive: { backgroundColor: '#B84A2A' },
+  tendingCircleToday: { backgroundColor: '#E0D6C2' },
+  tendingCircleFuture: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E0D6C2' },
+  tendingCircleMissed: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E0D6C2' },
+  tendingDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#8C8270' },
+  tendingDayLabel: { fontSize: 11, color: colors.muted },
+  tendingFooter: { fontSize: 12.5, color: colors.muted, fontStyle: 'italic', fontFamily: serif, textAlign: 'center' },
 });
