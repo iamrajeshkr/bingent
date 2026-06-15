@@ -31,14 +31,14 @@ export default function InnerWeatherHome() {
   const [cont, setCont] = useState<ContinueItem[]>([]);
   const [threadList, setThreadList] = useState<ThreadGroup[]>([]);
 
-  // Refresh "Continue" each time the home regains focus (e.g. after listening).
+  // Refresh "Continue" and "Wander" each time the home regains focus (e.g. after
+  // finishing something) so freshly-completed items drop out of both. The theme
+  // search is server-cached, so this is a cheap call.
   useFocusEffect(
     useCallback(() => {
       api.getContinue().then((r) => setCont(r.items.filter((i) => !i.position?.completed))).catch(() => {});
-      if (threadList.length === 0) {
-        api.getThreads(prefs.language).then((r) => setThreadList(r.threads)).catch(() => {});
-      }
-    }, [threadList.length, prefs.language])
+      api.getThreads(prefs.language).then((r) => setThreadList(r.threads)).catch(() => {});
+    }, [prefs.language])
   );
 
   const choose = async (w: Weather) => {
