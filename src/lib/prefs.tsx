@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Lang } from './types';
+import type { Weather } from './weather';
 
 export type Rhythm = 'morning' | 'commute' | 'winddown';
 export type Mode = 'read' | 'listen';
@@ -24,6 +25,8 @@ interface Prefs {
   saved: string[]; // catalog item ids
   continueState: ContinueState | null;
   daysUsed: string[]; // ISO dates the app was opened
+  todayWeather: Weather | null; // persisted for the day
+  todayWeatherDate: string; // ISO date when todayWeather was set
   set: (patch: Partial<Omit<Prefs, 'set' | 'ready'>>) => void;
   toggleSaved: (id: string) => void;
 }
@@ -39,6 +42,8 @@ const defaults = {
   saved: [] as string[],
   continueState: null as ContinueState | null,
   daysUsed: [] as string[],
+  todayWeather: null as Weather | null,
+  todayWeatherDate: '',
 };
 
 const PrefsContext = createContext<Prefs>({ ...defaults, ready: false, set: () => {}, toggleSaved: () => {} });
@@ -53,6 +58,11 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
         const loaded = raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
         const today = new Date().toISOString().slice(0, 10);
         if (!loaded.daysUsed.includes(today)) loaded.daysUsed = [...loaded.daysUsed, today];
+        // Clear stale weather from a previous day
+        if (loaded.todayWeatherDate !== today) {
+          loaded.todayWeather = null;
+          loaded.todayWeatherDate = '';
+        }
         setState(loaded);
       })
       .finally(() => setReady(true));

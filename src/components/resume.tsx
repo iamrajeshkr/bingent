@@ -9,12 +9,11 @@ const TYPE_LABEL: Record<string, string> = { byte: 'Byte', summary: 'Summary', j
 
 function calc(it: ContinueItem) {
   const p = it.position ?? {};
-  const pct =
-    p.totalChapters && p.chapterSeq != null
-      ? Math.min(1, p.chapterSeq / p.totalChapters)
-      : p.durationSec
-      ? Math.min(1, (p.audioSec ?? 0) / p.durationSec)
-      : 0;
+  // For journeys, show within-chapter progress (how far into the current chapter).
+  // For non-journeys, show overall audio progress.
+  const pct = p.durationSec
+    ? Math.min(1, (p.audioSec ?? 0) / p.durationSec)
+    : 0;
   const minLeft = p.durationSec ? Math.max(1, Math.floor((p.durationSec - (p.audioSec ?? 0)) / 60)) : null;
   return { p, pct, minLeft };
 }

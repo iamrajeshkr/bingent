@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
-import { MiniResume, ResumeRibbon } from '@/components/resume';
+import { ResumeRibbon } from '@/components/resume';
 import { Skeleton } from '@/components/skeleton';
 import { api, type ContinueItem, type RecItem, type ThreadGroup } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
@@ -43,6 +43,18 @@ export default function Shelf() {
   const [threadList, setThreadList] = useState<ThreadGroup[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
+  // Restore today's persisted weather on mount.
+  useEffect(() => {
+    if (prefs.ready && prefs.todayWeather && !weather && recs.length === 0) {
+      setWeather(prefs.todayWeather);
+      setRecsLoading(true);
+      api.recommend({ weather: prefs.todayWeather, limit: 5 })
+        .then(({ items }) => setRecs(items))
+        .catch(() => {})
+        .finally(() => setRecsLoading(false));
+    }
+  }, [prefs.ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useFocusEffect(
     useCallback(() => {
       ensureCatalog().catch(() => {});
@@ -54,6 +66,9 @@ export default function Shelf() {
 
   const choose = async (w: Weather) => {
     setWeather(w);
+    // Persist for the day so we don't ask again.
+    const today = new Date().toISOString().slice(0, 10);
+    prefs.set({ todayWeather: w, todayWeatherDate: today });
     setRecsLoading(true);
     api.setWeather({ weather: w, local_hour: new Date().getHours() }).catch(() => {});
     try {
@@ -65,8 +80,6 @@ export default function Shelf() {
   };
 
   const hero = recs[0];
-  const openComposed = () =>
-    router.push({ pathname: '/composed', params: { weather: weather ?? '', intent: prefs.intent ?? '' } } as unknown as Href);
   const openItem = (kind: RecItem['kind'], id: string) =>
     router.push({ pathname: '/item/[type]/[id]', params: { type: kind, id } });
 
@@ -78,12 +91,12 @@ export default function Shelf() {
       <Text style={styles.kicker}>{WEEKDAY[new Date().getDay()]} · {greeting()}</Text>
       <Text style={styles.h1}>What will you carry{'\n'}into today?</Text>
       {weather ? (
-        <Text style={styles.lede}>You said you’re {WEATHER_PHRASE[weather]}. Here is something gentle.</Text>
+        <Text style={styles.lede}>You said you're {WEATHER_PHRASE[weather]}. Here is something gentle.</Text>
       ) : (
         <Text style={styles.lede}>How is it inside today? Your page changes with it.</Text>
       )}
 
-      {/* mood check-in (until chosen) */}
+      {/* mood check-in (only until chosen — once per day) */}
       {!weather && (
         <View style={styles.moodRow}>
           {WEATHERS.map((w) => (
@@ -95,7 +108,7 @@ export default function Shelf() {
         </View>
       )}
 
-      {/* tonight's page hero */}
+      {/* today's page hero — only after weather is chosen */}
       {recsLoading && !hero ? (
         <Skeleton height={104} radius={20} style={{ marginTop: 18 }} />
       ) : hero ? (
@@ -103,24 +116,13 @@ export default function Shelf() {
           <View style={styles.heroGlow} />
           <BookCover item={{ type: hero.kind, title: hero.title, author: hero.author, cover: hero.cover }} w={66} r={8} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTag}>Today’s page</Text>
+            <Text style={styles.heroTag}>Today's page</Text>
             <Text style={styles.heroTitle} numberOfLines={2}>{hero.title}</Text>
             <Text style={styles.heroSub} numberOfLines={1}>{hero.reason || 'Read or listen'}</Text>
           </View>
           <PlayDot onPress={() => player.playItem(hero.kind, hero.id, { lang: prefs.language })} />
         </Pressable>
-      ) : (
-        <Pressable style={styles.hero} onPress={openComposed}>
-          <View style={styles.heroGlow} />
-          <View style={styles.heroSpark}><Ionicons name="sparkles" size={22} color="#E8B45E" /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTag}>Today’s page</Text>
-            <Text style={styles.heroTitle}>Written for you</Text>
-            <Text style={styles.heroSub}>A page composed for how today feels</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={20} color="#CFC8E0" />
-        </Pressable>
-      )}
+      ) : null}
 
       {/* sit ritual */}
       {weather && (
@@ -128,7 +130,7 @@ export default function Shelf() {
           style={styles.sit}
           onPress={() => router.push({ pathname: '/sit', params: { weather } } as unknown as Href)}>
           <Ionicons name="leaf-outline" size={16} color={colors.indigo} />
-          <Text style={styles.sitText}>Begin today’s sit · 6 min</Text>
+          <Text style={styles.sitText}>Begin today's sit · 6 min</Text>
           <Ionicons name="arrow-forward" size={15} color={colors.indigo} />
         </Pressable>
       )}
@@ -144,31 +146,28 @@ export default function Shelf() {
         </View>
       )}
 
-      {/* continue — compact resume ribbon + ring chips */}
+      {/* continue — single primary ResumeRibbon only */}
       {cont.length > 0 && (
         <View style={{ marginTop: 22 }}>
           <View style={styles.sectionRow}>
             <Text style={styles.section}>Pick up where you paused</Text>
-            <Text style={styles.sectionMeta}>{cont.length} open</Text>
+            <Pressable
+              style={styles.continueLink}
+              onPress={() => router.push('/continue' as Href)}
+              hitSlop={8}>
+              <Text style={styles.sectionMeta}>{cont.length} open</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.muted} />
+            </Pressable>
           </View>
           {(() => {
+            const primary = cont[0]!;
             const resume = (it: ContinueItem) =>
               player.playItem(it.kind, it.id, {
                 lang: prefs.language,
                 ...(it.kind !== 'journey' ? { startAtSec: it.position?.audioSec ?? 0 } : {}),
               });
-            const primary = cont[0]!;
             return (
-              <>
-                <ResumeRibbon it={primary} onOpen={() => openItem(primary.kind, primary.id)} onPlay={() => resume(primary)} />
-                {cont.length > 1 && (
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                    {cont.slice(1, 3).map((it) => (
-                      <MiniResume key={`${it.kind}-${it.id}`} it={it} onOpen={() => openItem(it.kind, it.id)} onPlay={() => resume(it)} />
-                    ))}
-                  </View>
-                )}
-              </>
+              <ResumeRibbon it={primary} onOpen={() => openItem(primary.kind, primary.id)} onPlay={() => resume(primary)} />
             );
           })()}
         </View>
@@ -195,7 +194,7 @@ export default function Shelf() {
       )}
 
       {(cont.length > 0 || threadList.length > 0) && (
-        <Text style={styles.footer}>— that’s your page for today —</Text>
+        <Text style={styles.footer}>— that's your page for today —</Text>
       )}
     </ScrollView>
   );
@@ -216,7 +215,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 14, alignItems: 'center', overflow: 'hidden',
   },
   heroGlow: { position: 'absolute', top: -40, right: -30, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(199,91,57,0.28)' },
-  heroSpark: { width: 66, height: 88, borderRadius: 8, backgroundColor: colors.indigo, alignItems: 'center', justifyContent: 'center' },
   heroTag: { fontSize: 10.5, letterSpacing: 1.4, textTransform: 'uppercase', color: '#E8B45E', fontWeight: '700' },
   heroTitle: { fontFamily: serif, fontSize: 19, color: colors.inkInverse, marginTop: 4, marginBottom: 5, lineHeight: 23 },
   heroSub: { fontSize: 12, color: colors.mutedOnDark, fontStyle: 'italic', fontFamily: serif },
@@ -229,16 +227,7 @@ const styles = StyleSheet.create({
   section: { fontFamily: serif, fontSize: 16, color: colors.ink, marginBottom: 10 },
   sectionRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
   sectionMeta: { fontSize: 11, color: colors.muted },
-  continueCard: {
-    width: 190, backgroundColor: colors.cardAlt, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16, padding: 13,
-  },
-  tag: { fontSize: 10.5, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600' },
-  continueTitle: { fontFamily: serif, fontSize: 14.5, lineHeight: 19, color: colors.ink, marginTop: 4, marginBottom: 8, minHeight: 38 },
-  track: { height: 5, borderRadius: 3, backgroundColor: colors.track, overflow: 'hidden' },
-  trackFill: { height: 5, borderRadius: 3 },
-  resume: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: colors.indigo, borderRadius: 999, paddingVertical: 8, marginTop: 11 },
-  resumeText: { color: '#FFFFFF', fontSize: 11.5, fontWeight: '600' },
+  continueLink: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   threadTitle: { fontFamily: serif, fontSize: 14.5, color: colors.ink, marginBottom: 9 },
   threadCardTitle: { fontFamily: serif, fontSize: 11.5, color: colors.ink, marginTop: 6, lineHeight: 15 },
   footer: { textAlign: 'center', fontStyle: 'italic', fontFamily: serif, color: colors.muted, fontSize: 12.5, marginTop: 8 },
