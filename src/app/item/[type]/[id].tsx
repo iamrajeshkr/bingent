@@ -42,6 +42,9 @@ export default function ItemDetail() {
     if (seed) setRow(seed);
     fetchItem(type, id).then((r) => { setRow(r); setLoaded(true); }).catch((e) => setError(String(e?.message ?? e)));
     api.getProgress(type, id).then((r) => setResumePos(r.position)).catch(() => {});
+    // Mark this item as engaged so the recommender stops re-serving it (reading
+    // alone otherwise leaves no trace — only listening-to-the-end did).
+    api.logEvents([{ type: 'page_open', kind: type, id }]).catch(() => {});
   }, [type, id]);
 
   const isJourney = type === 'journey';
