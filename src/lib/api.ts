@@ -146,7 +146,8 @@ export interface Position {
   // journey-only:
   section?: string;
   subsection?: string;
-  chapterSeq?: number;
+  chapterSeq?: number; // raw chapter seq — used to match/resume the right track
+  chapterNum?: number; // 1-based position in the playable queue — used for display
   totalChapters?: number;
 }
 export interface ContinueItem extends CatalogRef {

@@ -196,7 +196,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const t = queue[index];
       const position: Position =
         nowPlaying.kind === 'journey'
-          ? { chapterSeq: t?.chapterSeq, section: t?.section, totalChapters: queue.length, audioSec: status.currentTime, durationSec: status.duration }
+          ? { chapterSeq: t?.chapterSeq, chapterNum: index + 1, section: t?.section, totalChapters: queue.length, audioSec: status.currentTime, durationSec: status.duration }
           : { audioSec: status.currentTime, durationSec: status.duration };
       syncEnqueue(nowPlaying.kind, nowPlaying.itemId, position);
     }
@@ -216,7 +216,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         audioSec: status.duration,
         durationSec: status.duration,
         completed: true,
-        ...(nowPlaying.kind === 'journey' ? { chapterSeq: t?.chapterSeq, totalChapters: queue.length } : {}),
+        ...(nowPlaying.kind === 'journey' ? { chapterSeq: t?.chapterSeq, chapterNum: index + 1, totalChapters: queue.length } : {}),
       });
       playChime();
       const nx = preparedNext.current;

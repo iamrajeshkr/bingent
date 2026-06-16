@@ -119,7 +119,7 @@ export function ResumeRibbon({ it, onOpen, onPlay }: { it: ContinueItem; onOpen:
       <BookCover item={{ type: it.kind, title: it.title, cover: it.cover }} w={48} r={6} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={styles.kicker}>
-          {isJourney ? `Journey · ch ${p.chapterSeq ?? 0} of ${p.totalChapters ?? '–'}` : `${TYPE_LABEL[it.kind]} · ${Math.round(pct * 100)}%`}
+          {isJourney ? `Journey · ch ${p.chapterNum ?? p.chapterSeq ?? 1} of ${p.totalChapters ?? '–'}` : `${TYPE_LABEL[it.kind]} · ${Math.round(pct * 100)}%`}
         </Text>
         <Text numberOfLines={1} style={styles.title}>{it.title}</Text>
         <View style={styles.row}>
@@ -172,7 +172,7 @@ export function MiniResume({ it, onOpen, onPlay }: { it: ContinueItem; onOpen: (
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={styles.miniTitle}>{it.title}</Text>
         <Text numberOfLines={1} style={styles.miniMeta}>
-          {it.kind === 'journey' ? `ch ${p.chapterSeq ?? 0}` : `${Math.round(pct * 100)}%`}{minLeft != null ? ` · ${minLeft} min left` : ''}
+          {it.kind === 'journey' ? `ch ${p.chapterNum ?? p.chapterSeq ?? 1}` : `${Math.round(pct * 100)}%`}{minLeft != null ? ` · ${minLeft} min left` : ''}
         </Text>
       </View>
     </Pressable>

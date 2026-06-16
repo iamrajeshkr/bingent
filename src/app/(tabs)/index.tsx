@@ -81,8 +81,8 @@ export default function Shelf() {
           setCont(
             merged.filter((i) => {
               const p = i.position;
-              // mirror the server: not finished, and ≥30s in (or past the first chapter)
-              return p?.completed !== true && ((p?.audioSec ?? 0) >= 30 || (p?.chapterSeq ?? 0) > 1);
+              // mirror the server: journeys show once started; bites/summaries need 30s
+              return p?.completed !== true && (i.kind === 'journey' || (p?.audioSec ?? 0) >= 30);
             })
           );
         })
