@@ -5,6 +5,7 @@ import { playChime } from './chime';
 import { fetchItem } from './content';
 import { clearAll as clearPrefetch, localFor, prefetch } from './prefetch';
 import { buildQueue, type NowPlaying, type Track } from './queue';
+import { enqueue as syncEnqueue, startSyncQueue } from './sync-queue';
 import { getCachedRow } from './use-catalog';
 import type { ItemType, Lang } from './types';
 
@@ -67,6 +68,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'doNotMix' }).catch(() => {});
     // Wipe any prefetched audio left over from a previous run.
     clearPrefetch();
+    // Start the write-ahead sync queue (flushes on foreground + every 30s).
+    const stopQueue = startSyncQueue();
+    return stopQueue;
   }, []);
 
   const setAutoplay = useCallback((on: boolean) => { autoplayRef.current = on; setAutoplayState(on); }, []);
@@ -194,7 +198,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         nowPlaying.kind === 'journey'
           ? { chapterSeq: t?.chapterSeq, section: t?.section, totalChapters: queue.length, audioSec: status.currentTime, durationSec: status.duration }
           : { audioSec: status.currentTime, durationSec: status.duration };
-      api.saveProgress(nowPlaying.kind, nowPlaying.itemId, position).catch(() => {});
+      syncEnqueue(nowPlaying.kind, nowPlaying.itemId, position);
     }
   }, [status.currentTime, status.isLoaded, status.duration, nowPlaying, queue, index]);
 
@@ -208,12 +212,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // Whole item finished: mark complete, ring the chime, then autoplay the
       // prepared up-next (prefetched, so it starts instantly) if enabled.
       const t = queue[index];
-      api.saveProgress(nowPlaying.kind, nowPlaying.itemId, {
+      syncEnqueue(nowPlaying.kind, nowPlaying.itemId, {
         audioSec: status.duration,
         durationSec: status.duration,
         completed: true,
         ...(nowPlaying.kind === 'journey' ? { chapterSeq: t?.chapterSeq, totalChapters: queue.length } : {}),
-      }).catch(() => {});
+      });
       playChime();
       const nx = preparedNext.current;
       if (autoplayRef.current && nx) {

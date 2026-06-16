@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { BookCover } from '@/components/book-cover';
 import type { ContinueItem } from '@/lib/api';
+import { usePlayer } from '@/lib/player';
 import { colors, serif, typeColors } from '@/lib/theme';
 
 const TYPE_LABEL: Record<string, string> = { byte: 'Byte', summary: 'Summary', journey: 'Journey' };
@@ -18,10 +20,52 @@ function calc(it: ContinueItem) {
   return { p, pct, minLeft };
 }
 
+// Three small bars that pulse at different speeds to indicate "currently playing".
+function EqBars({ color, size }: { color: string; size: number }) {
+  const a1 = useRef(new Animated.Value(0.3)).current;
+  const a2 = useRef(new Animated.Value(0.5)).current;
+  const a3 = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = (v: Animated.Value, dur: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(v, { toValue: 1, duration: dur, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(v, { toValue: 0.2, duration: dur, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        ])
+      );
+    const l1 = loop(a1, 400);
+    const l2 = loop(a2, 550);
+    const l3 = loop(a3, 350);
+    l1.start(); l2.start(); l3.start();
+    return () => { l1.stop(); l2.stop(); l3.stop(); };
+  }, [a1, a2, a3]);
+
+  const barW = Math.max(2, size * 0.12);
+  const gap = Math.max(1, size * 0.06);
+  const maxH = size * 0.55;
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap, height: maxH }}>
+      {[a1, a2, a3].map((v, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: barW,
+            borderRadius: barW / 2,
+            backgroundColor: color,
+            height: v.interpolate({ inputRange: [0, 1], outputRange: [maxH * 0.25, maxH] }),
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 export function RingPlay({
-  pct, size = 50, ring = '#E2A24A', track = 'rgba(255,255,255,0.18)', core = '#E2A24A', glyph = '#1F4A45', sw = 3, onPress,
+  pct, size = 50, ring = '#E2A24A', track = 'rgba(255,255,255,0.18)', core = '#E2A24A', glyph = '#1F4A45', sw = 3, isPlaying = false, onPress,
 }: {
-  pct: number; size?: number; ring?: string; track?: string; core?: string; glyph?: string; sw?: number; onPress?: () => void;
+  pct: number; size?: number; ring?: string; track?: string; core?: string; glyph?: string; sw?: number; isPlaying?: boolean; onPress?: () => void;
 }) {
   const r = size / 2 - sw / 2 - 0.5;
   const C = 2 * Math.PI * r;
@@ -32,16 +76,43 @@ export function RingPlay({
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={ring} strokeWidth={sw} fill="none" strokeLinecap="round" strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - Math.max(0, Math.min(1, pct)))} />
       </Svg>
       <View style={{ position: 'absolute', top: sw + 2, left: sw + 2, right: sw + 2, bottom: sw + 2, borderRadius: size, backgroundColor: core, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name="play" size={size * 0.32} color={glyph} />
+        {isPlaying ? (
+          <EqBars color={glyph} size={size * 0.55} />
+        ) : (
+          <Ionicons name="play" size={size * 0.32} color={glyph} />
+        )}
       </View>
     </Pressable>
   );
 }
 
 // Slim primary resume row — cover, type/chapter, title, minutes left, ring-play.
+// Reads live position from the player when this item is actively playing.
 export function ResumeRibbon({ it, onOpen, onPlay }: { it: ContinueItem; onOpen: () => void; onPlay: () => void }) {
-  const { p, pct, minLeft } = calc(it);
+  const player = usePlayer();
+  const isThisPlaying = player.nowPlaying?.itemId === it.id && player.nowPlaying?.kind === it.kind;
+
+  // Use live position from player if this item is currently loaded, otherwise fall back to snapshot.
+  const livePct = isThisPlaying && player.durationSec > 0
+    ? Math.min(1, player.positionSec / player.durationSec)
+    : null;
+  const liveMinLeft = isThisPlaying && player.durationSec > 0
+    ? Math.max(1, Math.floor((player.durationSec - player.positionSec) / 60))
+    : null;
+
+  const { p, pct: snapshotPct, minLeft: snapshotMinLeft } = calc(it);
+  const pct = livePct ?? snapshotPct;
+  const minLeft = liveMinLeft ?? snapshotMinLeft;
   const isJourney = it.kind === 'journey';
+
+  const handlePress = () => {
+    if (isThisPlaying && player.playing) {
+      player.toggle(); // pause
+    } else {
+      onPlay();
+    }
+  };
+
   return (
     <Pressable onPress={onOpen} style={styles.ribbon}>
       <View style={styles.glow} />
@@ -65,18 +136,39 @@ export function ResumeRibbon({ it, onOpen, onPlay }: { it: ContinueItem; onOpen:
           )}
         </View>
       </View>
-      <RingPlay pct={pct} onPress={onPlay} />
+      <RingPlay pct={pct} isPlaying={isThisPlaying && player.playing} onPress={handlePress} />
     </Pressable>
   );
 }
 
 // Tiny secondary resume chip with a mini progress ring.
 export function MiniResume({ it, onOpen, onPlay }: { it: ContinueItem; onOpen: () => void; onPlay: () => void }) {
-  const { p, pct, minLeft } = calc(it);
+  const player = usePlayer();
+  const isThisPlaying = player.nowPlaying?.itemId === it.id && player.nowPlaying?.kind === it.kind;
+
+  const livePct = isThisPlaying && player.durationSec > 0
+    ? Math.min(1, player.positionSec / player.durationSec)
+    : null;
+  const liveMinLeft = isThisPlaying && player.durationSec > 0
+    ? Math.max(1, Math.floor((player.durationSec - player.positionSec) / 60))
+    : null;
+
+  const { p, pct: snapshotPct, minLeft: snapshotMinLeft } = calc(it);
+  const pct = livePct ?? snapshotPct;
+  const minLeft = liveMinLeft ?? snapshotMinLeft;
   const col = typeColors[it.kind] ?? colors.muted;
+
+  const handlePress = () => {
+    if (isThisPlaying && player.playing) {
+      player.toggle();
+    } else {
+      onPlay();
+    }
+  };
+
   return (
     <Pressable onPress={onOpen} style={styles.mini}>
-      <RingPlay pct={pct} size={28} ring={col} track={colors.track} core={col} glyph="#fff" sw={2.5} onPress={onPlay} />
+      <RingPlay pct={pct} size={28} ring={col} track={colors.track} core={col} glyph="#fff" sw={2.5} isPlaying={isThisPlaying && player.playing} onPress={handlePress} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={styles.miniTitle}>{it.title}</Text>
         <Text numberOfLines={1} style={styles.miniMeta}>

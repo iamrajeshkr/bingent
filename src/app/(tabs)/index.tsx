@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/skeleton';
 import { api, type ContinueItem, type RecItem, type ThreadGroup } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
 import { usePrefs } from '@/lib/prefs';
+import { onCompletion, getAllLocal } from '@/lib/sync-queue';
 import { colors, serif, typeColors } from '@/lib/theme';
 import { ensureCatalog } from '@/lib/use-catalog';
 import { WEATHERS, WEATHER_PHRASE, type Weather } from '@/lib/weather';
@@ -55,20 +56,36 @@ export default function Shelf() {
     }
   }, [prefs.ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Subscribe to completion events: immediately remove finished items.
+  useEffect(() => {
+    return onCompletion((kind, id) => {
+      setCont((prev) => prev.filter((c) => !(c.kind === kind && c.id === id)));
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       ensureCatalog().catch(() => {});
       const a = api
         .getContinue()
-        .then((r) =>
+        .then((r) => {
+          // Merge server data with any local writes that haven't synced yet.
+          const local = getAllLocal();
+          const merged = r.items.map((i) => {
+            const localPos = local.get(`${i.kind}:${i.id}`);
+            if (localPos && (localPos.audioSec ?? 0) > (i.position?.audioSec ?? 0)) {
+              return { ...i, position: localPos };
+            }
+            return i;
+          });
           setCont(
-            r.items.filter((i) => {
+            merged.filter((i) => {
               const p = i.position;
               // mirror the server: not finished, and ≥30s in (or past the first chapter)
               return p?.completed !== true && ((p?.audioSec ?? 0) >= 30 || (p?.chapterSeq ?? 0) > 1);
             })
-          )
-        )
+          );
+        })
         .catch(() => {});
       const b = api.getThreads(prefs.language).then((r) => setThreadList(r.threads)).catch(() => {});
       Promise.allSettled([a, b]).finally(() => setHydrated(true));

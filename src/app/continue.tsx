@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ResumeRibbon } from '@/components/resume';
@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/skeleton';
 import { api, type ContinueItem } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
 import { usePrefs } from '@/lib/prefs';
+import { onCompletion, getAllLocal } from '@/lib/sync-queue';
 import { colors, serif } from '@/lib/theme';
 
 // Full list of in-progress items — navigated to from the "Pick up where you
@@ -21,10 +22,27 @@ export default function ContinueScreen() {
   const [items, setItems] = useState<ContinueItem[]>([]);
   const [loaded, setLoaded] = useState(false);
 
+  // Subscribe to completion events: immediately remove finished items.
+  useEffect(() => {
+    return onCompletion((kind, id) => {
+      setItems((prev) => prev.filter((c) => !(c.kind === kind && c.id === id)));
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       api.getContinue()
-        .then((r) => setItems(r.items.filter((i) => !i.position?.completed)))
+        .then((r) => {
+          const local = getAllLocal();
+          const merged = r.items.map((i) => {
+            const localPos = local.get(`${i.kind}:${i.id}`);
+            if (localPos && (localPos.audioSec ?? 0) > (i.position?.audioSec ?? 0)) {
+              return { ...i, position: localPos };
+            }
+            return i;
+          });
+          setItems(merged.filter((i) => !i.position?.completed));
+        })
         .catch(() => {})
         .finally(() => setLoaded(true));
     }, [])
