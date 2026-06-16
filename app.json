@@ -8,7 +8,6 @@
     "scheme": "kitab",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.kitab.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -40,9 +39,11 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#26203A",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120,
           "android": {
             "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "imageWidth": 120
           }
         }
       ],
