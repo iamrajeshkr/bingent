@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Appear } from '@/components/appear';
 import { api, type AskTurn, type CatalogRef } from '@/lib/api';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif, typeColors } from '@/lib/theme';
@@ -81,7 +82,7 @@ export default function Ask() {
               <Text style={styles.userText}>{t.text}</Text>
             </View>
           ) : (
-            <View key={i}>
+            <Appear key={i}>
               <Text style={styles.reply}>{t.text}</Text>
               {t.items?.map((item) => (
                 <Pressable
@@ -98,7 +99,7 @@ export default function Ask() {
                   </View>
                 </Pressable>
               ))}
-            </View>
+            </Appear>
           )
         )}
         {busy && <ActivityIndicator color={colors.indigo} style={{ marginVertical: 12 }} />}

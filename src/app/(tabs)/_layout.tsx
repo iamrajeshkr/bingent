@@ -11,6 +11,9 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
         sceneStyle: { backgroundColor: colors.bg },
+        // Cross-fade/shift between tabs instead of an instant cut, so switching
+        // reads as one connected surface rather than a hard jump.
+        animation: 'shift',
       }}>
       <Tabs.Screen
         name="index"

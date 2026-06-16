@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Appear } from '@/components/appear';
 import { BookCover } from '@/components/book-cover';
 import { ResumeRibbon } from '@/components/resume';
 import { Skeleton } from '@/components/skeleton';
@@ -140,16 +141,18 @@ export default function Shelf() {
       {recsLoading && !hero ? (
         <Skeleton height={104} radius={20} style={{ marginTop: 18 }} />
       ) : hero ? (
-        <Pressable style={styles.hero} onPress={() => openItem(hero.kind, hero.id)}>
-          <View style={styles.heroGlow} />
-          <BookCover item={{ type: hero.kind, title: hero.title, author: hero.author, cover: hero.cover }} w={66} r={8} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTag}>Today's page</Text>
-            <Text style={styles.heroTitle} numberOfLines={2}>{hero.title}</Text>
-            <Text style={styles.heroSub} numberOfLines={1}>{hero.reason || 'Read or listen'}</Text>
-          </View>
-          <PlayDot onPress={() => player.playItem(hero.kind, hero.id, { lang: prefs.language })} />
-        </Pressable>
+        <Appear>
+          <Pressable style={styles.hero} onPress={() => openItem(hero.kind, hero.id)}>
+            <View style={styles.heroGlow} />
+            <BookCover item={{ type: hero.kind, title: hero.title, author: hero.author, cover: hero.cover }} w={66} r={8} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroTag}>Today's page</Text>
+              <Text style={styles.heroTitle} numberOfLines={2}>{hero.title}</Text>
+              <Text style={styles.heroSub} numberOfLines={1}>{hero.reason || 'Read or listen'}</Text>
+            </View>
+            <PlayDot onPress={() => player.playItem(hero.kind, hero.id, { lang: prefs.language })} />
+          </Pressable>
+        </Appear>
       ) : null}
 
       {/* sit ritual */}

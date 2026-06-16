@@ -16,7 +16,20 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: colors.bg },
+              // One consistent push everywhere — a smooth horizontal slide with
+              // edge swipe-back — so navigation reads as connected, not abrupt.
+              // (Edge swipe only, NOT full-screen, so it doesn't fight the
+              // horizontal carousels / mini-player / library gestures.)
+              animation: 'slide_from_right',
+              animationDuration: 260,
+              gestureEnabled: true,
             }}>
+            {/* Entry / transition screens fade rather than slide. */}
+            <Stack.Screen name="(tabs)" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="threshold" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="auth" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
+            {/* Modals slide up from the bottom. */}
             <Stack.Screen name="player" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             <Stack.Screen name="library" options={{ presentation: 'modal', animation: 'slide_from_bottom', gestureEnabled: false }} />
           </Stack>
