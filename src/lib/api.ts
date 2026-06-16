@@ -3,7 +3,7 @@ import { API_URL } from './config';
 import type { ItemType, Lang } from './types';
 import type { Weather } from './weather';
 
-// Thin client for the Kitab AI backend. Real accounts: username + password.
+// Thin client for the Bingent AI backend. Real accounts: username + password.
 // The backend mints a long-lived JWT; we persist it so the session survives
 // app restarts (no more "starts afresh"). No auto-guest — calls require a session.
 

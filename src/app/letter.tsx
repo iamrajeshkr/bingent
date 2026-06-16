@@ -7,7 +7,7 @@ import { api, type Letter } from '@/lib/api';
 import { usePrefs } from '@/lib/prefs';
 import { colors, serif } from '@/lib/theme';
 
-// A letter from Kitab — the week, narrated back to the reader.
+// A letter from Bingent — the week, narrated back to the reader.
 export default function LetterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,7 +48,7 @@ export default function LetterScreen() {
 
       <View style={{ alignItems: 'center', marginBottom: 18 }}>
         <Ionicons name="mail-open-outline" size={26} color={colors.accent} />
-        <Text style={styles.h1}>A letter from Kitab</Text>
+        <Text style={styles.h1}>A letter from Bingent</Text>
       </View>
 
       {loading && <ActivityIndicator color={colors.indigo} style={{ marginTop: 30 }} />}
@@ -71,7 +71,7 @@ export default function LetterScreen() {
       {!loading && !letter && (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
-            No letter yet. When you've spent a little time with Kitab, it can write you one — your
+            No letter yet. When you've spent a little time with Bingent, it can write you one — your
             week, narrated back.
           </Text>
           <Pressable style={styles.cta} onPress={write} disabled={writing}>

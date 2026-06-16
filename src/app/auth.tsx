@@ -51,7 +51,7 @@ export default function Auth() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 30 }]}>
-        <Text style={styles.brand}>Kitab</Text>
+        <Text style={styles.brand}>Bingent</Text>
         <Text style={styles.title}>{isSignup ? 'Create your account' : 'Welcome back'}</Text>
         <Text style={styles.sub}>
           {isSignup ? 'Just a username and password — nothing else.' : 'Sign in to continue your practice.'}
@@ -97,7 +97,7 @@ export default function Auth() {
           onPress={() => (isSignup ? setMode('signin') : router.replace('/onboarding' as Href))}
           style={{ marginTop: 18 }}>
           <Text style={styles.toggle}>
-            {isSignup ? 'Already have an account? ' : 'New to Kitab? '}
+            {isSignup ? 'Already have an account? ' : 'New to Bingent? '}
             <Text style={{ color: colors.indigo, fontWeight: '600' }}>{isSignup ? 'Sign in' : 'Create one'}</Text>
           </Text>
         </Pressable>

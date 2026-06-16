@@ -59,7 +59,7 @@ export default function Ask() {
           <Ionicons name="sparkles" size={15} color="#FFFFFF" />
         </View>
         <View>
-          <Text style={styles.h1}>Ask Kitab</Text>
+          <Text style={styles.h1}>Ask Bingent</Text>
           <Text style={styles.sub}>Remembers what moves you</Text>
         </View>
       </View>
@@ -71,7 +71,7 @@ export default function Ask() {
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
         {turns.length === 0 && (
           <Text style={styles.empty}>
-            Tell Kitab how you feel, or what you want to become — it will draw a path from the
+            Tell Bingent how you feel, or what you want to become — it will draw a path from the
             library for you.{'\n\n'}Try: "I feel restless all the time"
           </Text>
         )}
@@ -107,7 +107,7 @@ export default function Ask() {
       <View style={[styles.inputRow, { paddingBottom: insets.bottom + 8 }]}>
         <TextInput
           style={styles.input}
-          placeholder="Tell Kitab how tonight feels…"
+          placeholder="Tell Bingent how tonight feels…"
           placeholderTextColor={colors.muted}
           value={input}
           onChangeText={setInput}

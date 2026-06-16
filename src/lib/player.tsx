@@ -79,7 +79,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     try {
       (player as any).setActiveForLockScreen?.(true, {
         title: track.title,
-        artist: np.kind === 'journey' ? np.title : np.author ?? 'Kitab',
+        artist: np.kind === 'journey' ? np.title : np.author ?? 'Bingent',
         artworkUrl: np.cover ?? undefined,
       });
     } catch {

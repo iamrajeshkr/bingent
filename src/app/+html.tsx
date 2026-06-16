@@ -19,7 +19,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Kitab" />
+        <meta name="apple-mobile-web-app-title" content="Bingent" />
         <meta name="theme-color" content="#F8F4EB" />
 
         <ScrollViewStyleReset />

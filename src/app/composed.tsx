@@ -78,7 +78,7 @@ export default function ComposedScreen() {
 
         <View style={{ paddingHorizontal: 22, paddingTop: 18 }}>
           {!page && !error && <ActivityIndicator color={colors.indigo} style={{ marginTop: 30 }} />}
-          {error && <Text style={styles.error}>Kitab couldn't write your page — {error}</Text>}
+          {error && <Text style={styles.error}>Bingent couldn't write your page — {error}</Text>}
 
           {page?.paragraphs.map((p, i) => (
             <Text key={i} style={styles.para}>
@@ -102,7 +102,7 @@ export default function ComposedScreen() {
               {result ? (
                 <View style={styles.saved}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.indigo} />
-                  <Text style={styles.savedText}>Kept. Kitab will remember this.</Text>
+                  <Text style={styles.savedText}>Kept. Bingent will remember this.</Text>
                 </View>
               ) : (
                 <>

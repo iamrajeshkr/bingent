@@ -12,7 +12,7 @@ export const colors = {
   mutedOnDark: '#CFC8E0',
   accent: '#C75B39', // terracotta — bytes, CTAs
   accentSoft: '#F3E0D3',
-  indigo: '#4B3F8C', // journeys, Ask Kitab
+  indigo: '#4B3F8C', // journeys, Ask Bingent
   indigoSoft: '#EDE9F7',
   track: '#E0D6C2',
 };

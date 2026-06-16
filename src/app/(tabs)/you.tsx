@@ -120,13 +120,13 @@ export default function You() {
       <View style={styles.statsRow}>
         <Stat n={garden?.practices_kept ?? 0} label="practices kept" />
         <Stat n={garden?.pages_read ?? 0} label="pages read" />
-        <Stat n={garden?.days_used ?? prefs.daysUsed.length} label="days with Kitab" />
+        <Stat n={garden?.days_used ?? prefs.daysUsed.length} label="days with Bingent" />
       </View>
 
       {/* links */}
       <Pressable style={styles.link} onPress={() => router.push('/letter' as Href)}>
         <Ionicons name="mail-outline" size={18} color={colors.accent} />
-        <Text style={styles.linkText}>A letter from Kitab</Text>
+        <Text style={styles.linkText}>A letter from Bingent</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.muted} />
       </Pressable>
       <Pressable style={styles.link} onPress={() => router.push('/arcs' as Href)}>

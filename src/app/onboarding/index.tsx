@@ -56,7 +56,7 @@ export default function Onboarding() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 24, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
         <View style={styles.header}>
-          <Text style={styles.brand}>Kitab</Text>
+          <Text style={styles.brand}>Bingent</Text>
           <View style={styles.langRow}>
             {(['en', 'hi'] as Lang[]).map((l) => (
               <Pressable key={l} onPress={() => setLang(l)} style={[styles.langPill, lang === l && styles.langActive]}>

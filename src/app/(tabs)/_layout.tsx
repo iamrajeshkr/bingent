@@ -29,7 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ask"
         options={{
-          title: 'Ask Kitab',
+          title: 'Ask Bingent',
           tabBarIcon: ({ size }) => (
             <Ionicons name="sparkles" size={size} color={colors.indigo} />
           ),

@@ -3,7 +3,7 @@ import { colors, serif } from '@/lib/theme';
 
 // Lightweight renderer for the markdown-ish content in the catalog:
 // ##/### headings, **bold** segments, --- dividers, paragraphs.
-// Long-press a paragraph to ask Kitab about that line (when onAskLine is given).
+// Long-press a paragraph to ask Bingent about that line (when onAskLine is given).
 export function MarkdownText({ content, onAskLine }: { content: string; onAskLine?: (line: string) => void }) {
   const blocks = content.split(/\n{2,}/);
   return (

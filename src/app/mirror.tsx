@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type MirrorSnapshot } from '@/lib/api';
 import { colors, serif } from '@/lib/theme';
 
-// The Mirror — Kitab's evolving self-portrait of who you're becoming.
+// The Mirror — Bingent's evolving self-portrait of who you're becoming.
 export default function MirrorScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function MirrorScreen() {
         <View style={styles.empty}>
           <Ionicons name="aperture-outline" size={32} color={colors.indigo} />
           <Text style={styles.emptyText}>
-            Kitab is still getting to know you. Read a little, leave a reflection or two, then
+            Bingent is still getting to know you. Read a little, leave a reflection or two, then
             compose your first portrait.
           </Text>
           <Pressable style={styles.cta} onPress={compose} disabled={generating}>
@@ -102,7 +102,7 @@ export default function MirrorScreen() {
 
           {latest.deltas?.note && (
             <View style={styles.delta}>
-              <Text style={styles.deltaTag}>A shift Kitab noticed</Text>
+              <Text style={styles.deltaTag}>A shift Bingent noticed</Text>
               <Text style={styles.deltaText}>{latest.deltas.note}</Text>
             </View>
           )}
