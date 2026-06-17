@@ -36,7 +36,7 @@ export default function Auth() {
       const r = mode === 'signup'
         ? await api.signup({ username: u, password, display_name: displayName.trim() || undefined })
         : await api.signin({ username: u, password });
-      prefs.set({ name: r.display_name });
+      prefs.set({ name: r.display_name, avatarUrl: r.avatar_url ?? '' });
       router.replace('/' as Href); // gate routes onward (onboarding or tabs)
     } catch (e: any) {
       setError(String(e?.message ?? e));

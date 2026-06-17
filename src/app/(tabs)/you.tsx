@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { Avatar } from '@/components/avatar';
 import { Spine } from '@/components/book-cover';
 import { api, signOut, type FinishedItem, type Garden } from '@/lib/api';
 import { usePrefs } from '@/lib/prefs';
@@ -25,6 +27,65 @@ export default function You() {
   const prefs = usePrefs();
 
   const [garden, setGarden] = useState<Garden | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need camera roll permissions to change your avatar.');
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0]!;
+      if (!asset.base64) {
+        Alert.alert('Error', 'Could not read image data.');
+        return;
+      }
+
+      setUploading(true);
+      const res = await api.uploadAvatar(asset.base64, asset.mimeType || 'image/jpeg');
+      prefs.set({ avatarUrl: res.avatar_url });
+      setGarden(prev => prev ? { ...prev, avatar_url: res.avatar_url } : null);
+      Alert.alert('Success', 'Avatar updated successfully.');
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to upload image.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Error', 'Display name cannot be empty.');
+      return;
+    }
+    try {
+      setUploading(true);
+      const res = await api.updateProfile(editName.trim());
+      prefs.set({ name: res.display_name });
+      setGarden(prev => prev ? { ...prev, display_name: res.display_name } : null);
+      setEditing(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update display name.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -42,14 +103,59 @@ export default function You() {
       contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 40 }}>
 
       {/* opened from the Shelf avatar — greet by name, with a way back */}
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={colors.ink} />
-        </Pressable>
-        <View style={{ width: 24 }} />
-      </View>
-      <Text style={styles.name}>{garden?.display_name || prefs.name || 'You'}</Text>
-      <Text style={styles.daysLine}>{(garden?.days_used ?? prefs.daysUsed.length)} days with Bingent</Text>
+      {editing ? (
+        <View style={styles.topBar}>
+          <Pressable onPress={() => setEditing(false)} hitSlop={12}>
+            <Text style={{ fontSize: 15, color: colors.muted }}>Cancel</Text>
+          </Pressable>
+          <Pressable onPress={saveProfile} disabled={uploading} hitSlop={12}>
+            {uploading ? (
+              <ActivityIndicator size="small" color={colors.indigo} />
+            ) : (
+              <Text style={{ fontSize: 15, color: colors.indigo, fontWeight: '600' }}>Save</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+          </Pressable>
+          <Pressable onPress={() => { setEditName(garden?.display_name || prefs.name || ''); setEditing(true); }} hitSlop={12} style={styles.editBtn}>
+            <Ionicons name="create-outline" size={14} color={colors.indigo} />
+            <Text style={styles.editBtnText}>Edit Profile</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {editing ? (
+        <View style={styles.profileHeaderEdit}>
+          <Pressable onPress={pickImage} style={styles.avatarEditContainer} disabled={uploading}>
+            <Avatar uri={garden?.avatar_url ?? prefs.avatarUrl} name={garden?.display_name ?? prefs.name} size={80} />
+            <View style={styles.avatarEditOverlay}>
+              <Ionicons name="camera-outline" size={20} color="#FFF" />
+            </View>
+          </Pressable>
+          <Text style={styles.avatarEditSub}>Tap to change photo</Text>
+
+          <TextInput
+            style={styles.nameInput}
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Display Name"
+            placeholderTextColor={colors.muted}
+            maxLength={50}
+          />
+        </View>
+      ) : (
+        <View style={styles.profileHeader}>
+          <Avatar uri={garden?.avatar_url ?? prefs.avatarUrl} name={garden?.display_name ?? prefs.name} size={72} />
+          <View style={styles.profileText}>
+            <Text style={styles.name}>{garden?.display_name || prefs.name || 'You'}</Text>
+            <Text style={styles.daysLine}>{(garden?.days_used ?? prefs.daysUsed.length)} days with Bingent</Text>
+          </View>
+        </View>
+      )}
 
       <GardenSection activeDays={garden?.active_days ?? []} streak={streak} />
 
@@ -321,7 +427,16 @@ const styles = StyleSheet.create({
   h1: { fontFamily: serif, fontSize: 25, color: colors.ink, marginBottom: 14 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   name: { fontFamily: serif, fontSize: 27, color: colors.ink },
-  daysLine: { fontSize: 12.5, color: colors.muted, marginTop: 2, marginBottom: 16 },
+  daysLine: { fontSize: 12.5, color: colors.muted, marginTop: 2, marginBottom: 0 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.indigoSoft, borderRadius: 12, paddingVertical: 6, paddingHorizontal: 12 },
+  editBtnText: { fontSize: 13, color: colors.indigo, fontWeight: '600' },
+  profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20, marginTop: 12 },
+  profileText: { flex: 1 },
+  profileHeaderEdit: { alignItems: 'center', marginVertical: 12 },
+  avatarEditContainer: { position: 'relative', width: 80, height: 80 },
+  avatarEditOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 40, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  avatarEditSub: { fontSize: 11.5, color: colors.muted, marginTop: 6, marginBottom: 12 },
+  nameInput: { fontFamily: serif, fontSize: 20, color: colors.ink, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 6, paddingHorizontal: 12, width: '80%', textAlign: 'center' },
 
   sky: { backgroundColor: '#181230', borderRadius: 18, padding: 16, marginBottom: 18, overflow: 'hidden' },
   skyHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },

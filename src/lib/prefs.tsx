@@ -19,6 +19,7 @@ interface Prefs {
   ready: boolean;
   onboarded: boolean;
   name: string; // account display name
+  avatarUrl: string; // account avatar (empty = none)
   language: Lang;
   intent: string;
   rhythm: Rhythm;
@@ -37,6 +38,7 @@ const KEY = 'kitab.prefs.v1';
 const defaults = {
   onboarded: false,
   name: '',
+  avatarUrl: '',
   language: 'en' as Lang,
   intent: '',
   rhythm: 'morning' as Rhythm,

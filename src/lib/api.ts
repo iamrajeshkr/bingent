@@ -58,6 +58,7 @@ const post = <T>(path: string, body: unknown) =>
   authed<T>(path, { method: 'POST', body: JSON.stringify(body) });
 const get = <T>(path: string) => authed<T>(path);
 const del = <T>(path: string) => authed<T>(path, { method: 'DELETE' });
+const patch = <T>(path: string, body: unknown) => authed<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
 
 // ---- response shapes (mirror the backend) --------------------------------
 export interface ComposedPage {
@@ -136,6 +137,7 @@ export interface Garden {
   streak: number;
   active_days: string[]; // ISO dates with activity (server truth)
   display_name: string | null;
+  avatar_url: string | null;
 }
 export interface MirrorSnapshot {
   portrait: string;
@@ -221,15 +223,18 @@ export interface SavedSummary {
 
 export const api = {
   signup: async (b: { username: string; password: string; display_name?: string }) => {
-    const r = await publicPost<{ userId: string; token: string; display_name: string }>('/v1/auth/signup', b);
+    const r = await publicPost<{ userId: string; token: string; display_name: string; avatar_url: string | null }>('/v1/auth/signup', b);
     await setToken(r.token);
     return r;
   },
   signin: async (b: { username: string; password: string }) => {
-    const r = await publicPost<{ userId: string; token: string; display_name: string }>('/v1/auth/signin', b);
+    const r = await publicPost<{ userId: string; token: string; display_name: string; avatar_url: string | null }>('/v1/auth/signin', b);
     await setToken(r.token);
     return r;
   },
+  getProfile: () => get<{ display_name: string | null; avatar_url: string | null; username: string | null }>('/v1/profile'),
+  updateProfile: (display_name: string) => patch<{ display_name: string }>('/v1/profile', { display_name }),
+  uploadAvatar: (data: string, content_type: string) => post<{ avatar_url: string }>('/v1/profile/avatar', { data, content_type }),
   previewPage: (b: { weather?: Weather; intent?: string; lang: Lang }) =>
     publicPost<{ title: string; paragraphs: string[] }>('/v1/auth/preview-page', b),
   composePage: (b: { weather: Weather; intent?: string; lang: Lang }) =>

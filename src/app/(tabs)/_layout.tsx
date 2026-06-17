@@ -45,6 +45,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="bookmark-outline" size={size} color={color} />,
         }}
       />
+      {/* Profile — opened from the avatar, not a tab button, but keeps the tab bar. */}
+      <Tabs.Screen name="you" options={{ href: null }} />
     </Tabs>
   );
 }

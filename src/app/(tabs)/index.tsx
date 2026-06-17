@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appear } from '@/components/appear';
+import { Avatar } from '@/components/avatar';
 import { BookCover } from '@/components/book-cover';
 import { ResumeRibbon } from '@/components/resume';
 import { Skeleton } from '@/components/skeleton';
@@ -98,9 +99,7 @@ export default function Shelf() {
       {/* greeting + avatar */}
       <View style={styles.topRow}>
         <Text style={styles.kicker}>{WEEKDAY[new Date().getDay()]} · {greeting()}</Text>
-        <Pressable style={styles.avatar} onPress={() => router.push('/you' as Href)} hitSlop={8}>
-          <Text style={styles.avatarText}>{(prefs.name || 'Y').trim().charAt(0).toUpperCase()}</Text>
-        </Pressable>
+        <Avatar uri={prefs.avatarUrl} name={prefs.name} size={36} onPress={() => router.push('/you' as Href)} />
       </View>
       <Text style={styles.h1}>What will you carry{'\n'}into today?</Text>
       <Text style={styles.lede}>

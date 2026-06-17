@@ -11,15 +11,11 @@ import { colors, serif, typeColors } from '@/lib/theme';
 
 // ── Spine dimensions ────────────────────────────────────────────────────────
 // Wider slots + taller heights → title text is readable at a glance.
-const SLOT = 38;
-const BOOK_W = 34;
-
-// Heights per content type — tall enough that ~4 words of the title are visible.
+// Slot must exceed the widest spine + the lean overhang so books never merge.
+const SLOT = 48;
 const hFor = (t: string, seed: number) =>
-  (t === 'journey' ? 220 : t === 'summary' ? 200 : 180) + ((seed * 7) % 12) - 6;
-
-// Width per content type — journeys are the fattest spines.
-const wFor = (t: string) => (t === 'journey' ? 42 : t === 'summary' ? 34 : 28);
+  (t === 'journey' ? 178 : t === 'summary' ? 162 : 146) + ((seed * 7) % 12) - 6;
+const wFor = (t: string) => (t === 'journey' ? 36 : t === 'summary' ? 30 : 24);
 
 // ── Category config ─────────────────────────────────────────────────────────
 type CategoryKey = 'journey' | 'byte' | 'summary';
@@ -32,21 +28,21 @@ const CATEGORIES: { key: CategoryKey; label: string; accent: string }[] = [
 // ── One book spine ──────────────────────────────────────────────────────────
 // Leans away from the focused book; the focused book peeks up.
 // A second tap topples it open.
-function Book({ item, idx, focus, lift, openRot, onPress }: {
-  item: FinishedItem; idx: number; focus: SharedValue<number>; lift: SharedValue<number>; openRot: SharedValue<number>; onPress: () => void;
+function Book({ item, idx, rackStart, rackEnd, focus, lift, openRot, onPress }: {
+  item: FinishedItem; idx: number; rackStart: number; rackEnd: number; focus: SharedValue<number>; lift: SharedValue<number>; openRot: SharedValue<number>; onPress: () => void;
 }) {
   const h = hFor(item.kind, item.title.length);
   const w = wFor(item.kind);
   const bg = typeColors[item.kind] ?? colors.muted;
-  const isJourney = item.kind === 'journey';
 
   const st = useAnimatedStyle(() => {
     'worklet';
     const f = focus.value;
     let rot = 4, ty = 0, sc = 1, z = 1;
-    if (f >= 0) {
+    // Only books on the SAME rack as the focused one react — other shelves stay put.
+    if (f >= rackStart && f <= rackEnd) {
       if (Math.abs(f - idx) < 0.5) { rot = openRot.value; ty = -20 + lift.value; sc = 1.07; z = 30; }
-      else rot = idx < f ? -12 : 12;
+      else rot = idx < f ? -7 : 7; // gentle lean so tall spines don't overlap neighbours
     }
     return { zIndex: z, transform: [{ perspective: 600 }, { translateY: ty }, { rotateZ: `${rot}deg` }, { scale: sc }] };
   });
@@ -60,34 +56,12 @@ function Book({ item, idx, focus, lift, openRot, onPress }: {
       }, st]}>
         <View style={[styles.band, { top: 8 }]} />
         <View style={[styles.band, { bottom: 8 }]} />
-        {isJourney ? (
-          // Journey spines are wide enough for horizontal multi-line text —
-          // reads naturally like a real thick book spine.
-          <Text numberOfLines={4} style={{
-            fontFamily: serif, fontSize: 9, lineHeight: 11.5,
-            color: '#FFFFFF', opacity: 0.92, textAlign: 'center',
-            paddingHorizontal: 3, width: w - 4,
-          }}>
+        {/* All titles read vertically down the spine, like a real bookshelf. */}
+        <View style={{ position: 'absolute', width: h - 18, transform: [{ rotate: '90deg' }], alignItems: 'center' }}>
+          <Text numberOfLines={1} style={{ fontFamily: serif, fontSize: 10, color: '#FFFFFF', opacity: 0.9, textAlign: 'center', width: '100%' }}>
             {item.title}
           </Text>
-        ) : (
-          // Non-journey: absolutely positioned so the text container can be
-          // wider than the spine (h-18 px) without flex clamping, then rotated.
-          <View style={{
-            position: 'absolute',
-            width: h - 18,
-            transform: [{ rotate: '90deg' }],
-            alignItems: 'center',
-          }}>
-            <Text numberOfLines={1} style={{
-              fontFamily: serif, fontSize: 10,
-              color: '#FFFFFF', opacity: 0.9, textAlign: 'center',
-              width: '100%',
-            }}>
-              {item.title}
-            </Text>
-          </View>
-        )}
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -208,6 +182,7 @@ export default function Library() {
                           <Book
                             key={`${it.kind}-${it.id}`}
                             item={it} idx={absIdx}
+                            rackStart={rack.absStart} rackEnd={rack.absStart + rack.items.length - 1}
                             focus={focus} lift={lift} openRot={openRot}
                             onPress={() => pressBook(absIdx, it)}
                           />
