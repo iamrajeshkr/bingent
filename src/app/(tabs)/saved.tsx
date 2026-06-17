@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
+import { PressScale } from '@/components/press';
 import { Skeleton } from '@/components/skeleton';
 import { SwipeRow } from '@/components/swipe-row';
 import { api, type CatalogRef, type HighlightItem, type SavedSummary } from '@/lib/api';
@@ -40,7 +41,7 @@ export default function Saved() {
   const recent = data?.recent ?? [];
 
   const CollCard = ({ c }: { c: SavedSummary['collections'][number] }) => (
-    <Pressable style={styles.collCard} onPress={() => router.push(`/collection/${c.id}` as Href)}>
+    <PressScale style={styles.collCard} onPress={() => router.push(`/collection/${c.id}` as Href)} scaleTo={0.95}>
       <View style={styles.collCovers}>
         {c.covers.length === 0
           ? <View style={styles.collEmpty}><Ionicons name="bookmarks-outline" size={18} color={colors.accent} /></View>
@@ -48,7 +49,7 @@ export default function Saved() {
       </View>
       <Text style={styles.collName} numberOfLines={1}>{c.name}</Text>
       <Text style={styles.collCount}>{c.count} saved</Text>
-    </Pressable>
+    </PressScale>
   );
 
   return (
@@ -73,20 +74,20 @@ export default function Saved() {
         ) : showAllColl ? (
           <View style={styles.collGrid}>
             {collections.map((c) => <CollCard key={c.id} c={c} />)}
-            <Pressable style={[styles.collCard, styles.quotesCard]} onPress={() => router.push('/commonplace' as Href)}>
+            <PressScale style={[styles.collCard, styles.quotesCard]} onPress={() => router.push('/commonplace' as Href)} scaleTo={0.95}>
               <View style={styles.collCovers}><View style={styles.collEmpty}><Ionicons name="text-outline" size={18} color={colors.indigo} /></View></View>
               <Text style={styles.collName} numberOfLines={1}>Quotes I kept</Text>
               <Text style={styles.collCount}>{data?.highlights_count ?? 0} lines</Text>
-            </Pressable>
+            </PressScale>
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 8 }}>
             {collections.map((c) => <CollCard key={c.id} c={c} />)}
-            <Pressable style={[styles.collCard, styles.quotesCard]} onPress={() => router.push('/commonplace' as Href)}>
+            <PressScale style={[styles.collCard, styles.quotesCard]} onPress={() => router.push('/commonplace' as Href)} scaleTo={0.95}>
               <View style={styles.collCovers}><View style={styles.collEmpty}><Ionicons name="text-outline" size={18} color={colors.indigo} /></View></View>
               <Text style={styles.collName} numberOfLines={1}>Quotes I kept</Text>
               <Text style={styles.collCount}>{data?.highlights_count ?? 0} lines</Text>
-            </Pressable>
+            </PressScale>
           </ScrollView>
         )}
 
@@ -102,11 +103,11 @@ export default function Saved() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 8 }}>
               {lines.slice(0, 10).map((l) => (
-                <Pressable key={l.id} style={styles.quoteCard} onPress={() => router.push('/commonplace' as Href)}>
+                <PressScale key={l.id} style={styles.quoteCard} onPress={() => router.push('/commonplace' as Href)} scaleTo={0.95}>
                   <Text style={styles.quoteMark}>“</Text>
                   <Text style={styles.quote} numberOfLines={4}>{l.quote}</Text>
                   <Text style={styles.quoteFrom} numberOfLines={1}>{l.title}</Text>
-                </Pressable>
+                </PressScale>
               ))}
             </ScrollView>
           </>
@@ -138,10 +139,10 @@ export default function Saved() {
       </ScrollView>
 
       {/* ergonomic right-thumb "new collection" capsule */}
-      <Pressable style={[styles.fab, { bottom: insets.bottom + 18 }]} onPress={() => setCreating(true)}>
+      <PressScale style={[styles.fab, { bottom: insets.bottom + 18 }]} onPress={() => setCreating(true)} scaleTo={0.9} haptic>
         <Ionicons name="add" size={18} color="#FFFFFF" />
         <Text style={styles.fabText}>New</Text>
-      </Pressable>
+      </PressScale>
 
       <Modal visible={creating} transparent animationType="fade" onRequestClose={() => setCreating(false)}>
         <Pressable style={styles.backdrop} onPress={() => setCreating(false)} />

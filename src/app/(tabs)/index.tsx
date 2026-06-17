@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Appear } from '@/components/appear';
 import { Avatar } from '@/components/avatar';
 import { BookCover } from '@/components/book-cover';
+import { PressScale } from '@/components/press';
 import { ResumeRibbon } from '@/components/resume';
 import { Skeleton } from '@/components/skeleton';
 import { api, type CatalogRef, type ContinueItem, type HomePayload, type ThreadGroup } from '@/lib/api';
@@ -25,11 +26,19 @@ function greeting() {
 }
 const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function PlayDot({ onPress }: { onPress: () => void }) {
+function PlayDot({ onPress, loading = false }: { onPress: () => void; loading?: boolean }) {
+  const [pending, setPending] = useState(false);
+  useEffect(() => { if (loading) setPending(false); }, [loading]);
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => setPending(false), 2500);
+    return () => clearTimeout(t);
+  }, [pending]);
+  const spinning = loading || pending;
   return (
-    <Pressable onPress={onPress} style={styles.playDot} hitSlop={8}>
-      <Ionicons name="play" size={18} color="#FFFFFF" />
-    </Pressable>
+    <PressScale onPress={() => { setPending(true); onPress(); }} style={styles.playDot} hitSlop={8} scaleTo={0.88} haptic>
+      {spinning ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="play" size={18} color="#FFFFFF" />}
+    </PressScale>
   );
 }
 
@@ -42,6 +51,7 @@ export default function Shelf() {
   const [weather, setWeather] = useState<Weather | null>(null);
   const [home, setHome] = useState<HomePayload | null>(null);
   const [homeLoading, setHomeLoading] = useState(false);
+  const [homeError, setHomeError] = useState(false);
   const [cont, setCont] = useState<ContinueItem[]>([]);
   const [threadList, setThreadList] = useState<ThreadGroup[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -51,9 +61,10 @@ export default function Shelf() {
 
   const loadHome = useCallback((w?: Weather | null) => {
     setHomeLoading(true);
+    setHomeError(false);
     return api.getHome({ weather: w ?? undefined, lang: prefs.language })
-      .then(setHome)
-      .catch(() => {})
+      .then((h) => { setHome(h); setHomeError(false); })
+      .catch(() => setHomeError(true))
       .finally(() => setHomeLoading(false));
   }, [prefs.language]);
 
@@ -126,7 +137,7 @@ export default function Shelf() {
         <Skeleton height={104} radius={20} style={{ marginTop: 18 }} />
       ) : hero ? (
         <Appear>
-          <Pressable style={styles.hero} onPress={() => openItem(hero.kind, hero.id)}>
+          <PressScale style={styles.hero} onPress={() => openItem(hero.kind, hero.id)} scaleTo={0.98}>
             <View style={styles.heroGlow} />
             <BookCover item={{ type: hero.kind, title: hero.title, author: hero.author, cover: hero.cover }} w={66} r={8} />
             <View style={{ flex: 1 }}>
@@ -134,18 +145,21 @@ export default function Shelf() {
               <Text style={styles.heroTitle} numberOfLines={2}>{hero.title}</Text>
               <Text style={styles.heroSub} numberOfLines={1}>{hero.reason || 'Read or listen'}</Text>
             </View>
-            <PlayDot onPress={() => player.playItem(hero.kind, hero.id, { lang: prefs.language })} />
-          </Pressable>
+            <PlayDot
+              loading={player.loading && player.nowPlaying?.itemId === hero.id && player.nowPlaying?.kind === hero.kind}
+              onPress={() => player.playItem(hero.kind, hero.id, { lang: prefs.language })}
+            />
+          </PressScale>
         </Appear>
       ) : null}
 
       {/* sit ritual */}
       {weather && (
-        <Pressable style={styles.sit} onPress={() => router.push({ pathname: '/sit', params: { weather } } as unknown as Href)}>
+        <PressScale style={styles.sit} onPress={() => router.push({ pathname: '/sit', params: { weather } } as unknown as Href)}>
           <Ionicons name="leaf-outline" size={16} color={colors.indigo} />
           <Text style={styles.sitText}>Begin today's sit · 6 min</Text>
           <Ionicons name="arrow-forward" size={15} color={colors.indigo} />
-        </Pressable>
+        </PressScale>
       )}
 
       {/* first-load skeletons */}
@@ -156,6 +170,14 @@ export default function Shelf() {
             <Skeleton width={92} height={138} radius={9} /><Skeleton width={92} height={138} radius={9} /><Skeleton width={92} height={138} radius={9} />
           </View>
         </View>
+      )}
+
+      {/* load failed (often a backend cold start) — let them retry */}
+      {hydrated && homeError && rails.length === 0 && (
+        <Pressable style={styles.retry} onPress={() => loadHome(weather)} disabled={homeLoading}>
+          <Ionicons name="refresh" size={16} color={colors.indigo} />
+          <Text style={styles.retryText}>{homeLoading ? 'Loading…' : "Couldn't load your page — tap to retry"}</Text>
+        </Pressable>
       )}
 
       {/* continue — primary ResumeRibbon */}
@@ -184,10 +206,10 @@ export default function Shelf() {
           {!!rail.subtitle && <Text style={styles.railSub}>{rail.subtitle}</Text>}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 8 }}>
             {rail.items.map((it: CatalogRef) => (
-              <Pressable key={`${it.kind}-${it.id}`} style={{ width: 92 }} onPress={() => openItem(it.kind, it.id)}>
+              <PressScale key={`${it.kind}-${it.id}`} style={{ width: 92 }} onPress={() => openItem(it.kind, it.id)} scaleTo={0.94}>
                 <BookCover item={{ type: it.kind, title: it.title, author: it.author, cover: it.cover }} w={92} r={9} />
                 <Text style={styles.railCardTitle} numberOfLines={2}>{it.title}</Text>
-              </Pressable>
+              </PressScale>
             ))}
           </ScrollView>
         </View>
@@ -202,10 +224,10 @@ export default function Shelf() {
               <Text style={styles.threadTitle}>{t.title}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 8 }}>
                 {t.items.slice(0, 6).map((it) => (
-                  <Pressable key={`${it.kind}-${it.id}`} style={{ width: 92 }} onPress={() => openItem(it.kind, it.id)}>
+                  <PressScale key={`${it.kind}-${it.id}`} style={{ width: 92 }} onPress={() => openItem(it.kind, it.id)} scaleTo={0.94}>
                     <BookCover item={{ type: it.kind, title: it.title, author: it.author, cover: it.cover }} w={92} r={9} />
                     <Text style={styles.railCardTitle} numberOfLines={2}>{it.title}</Text>
-                  </Pressable>
+                  </PressScale>
                 ))}
               </ScrollView>
             </View>
@@ -246,4 +268,6 @@ const styles = StyleSheet.create({
   link: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   threadTitle: { fontFamily: serif, fontSize: 14.5, color: colors.ink, marginBottom: 9 },
   footer: { textAlign: 'center', fontStyle: 'italic', fontFamily: serif, color: colors.muted, fontSize: 12.5, marginTop: 8 },
+  retry: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.indigoSoft, borderRadius: 14, paddingVertical: 14, marginTop: 22 },
+  retryText: { fontSize: 13, color: colors.indigo, fontWeight: '600' },
 });

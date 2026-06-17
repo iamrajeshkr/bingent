@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover } from '@/components/book-cover';
+import { PressScale } from '@/components/press';
 import { Skeleton } from '@/components/skeleton';
 import { api, type CatalogRef, type ThreadGroup } from '@/lib/api';
 import { usePrefs } from '@/lib/prefs';
@@ -49,7 +50,7 @@ export default function Discover() {
 
       {/* featured room */}
       {featured && (
-        <Pressable style={[styles.featured, { backgroundColor: featured.bg ?? '#2A3B22' }]} onPress={() => openRoom(featured.slug)}>
+        <PressScale style={[styles.featured, { backgroundColor: featured.bg ?? '#2A3B22' }]} onPress={() => openRoom(featured.slug)} scaleTo={0.98}>
           <View style={[styles.glow, { backgroundColor: `${featured.accent ?? '#E2A24A'}40` }]} />
           <View style={styles.featTop}>
             <Text style={[styles.roomNo, { color: featured.accent ?? '#E2A24A' }]}>Room 01</Text>
@@ -57,19 +58,19 @@ export default function Discover() {
           </View>
           <Text style={styles.featTitle}>{featured.title}</Text>
           {!!featured.note && <Text style={styles.featNote}>{featured.note}</Text>}
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 18 }}>
-            {featured.items.slice(0, 3).map((it) => (
-              <Pressable key={`${it.kind}-${it.id}`} onPress={() => open(it)}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 18 }} contentContainerStyle={{ gap: 12, paddingRight: 8 }}>
+            {featured.items.slice(0, 6).map((it) => (
+              <PressScale key={`${it.kind}-${it.id}`} onPress={() => open(it)} scaleTo={0.92}>
                 <BookCover item={{ type: it.kind, title: it.title, author: it.author, cover: it.cover }} w={74} r={9} />
-              </Pressable>
+              </PressScale>
             ))}
-          </View>
-        </Pressable>
+          </ScrollView>
+        </PressScale>
       )}
 
       {/* smaller rooms */}
       {rest.map((rm, i) => (
-        <Pressable key={rm.slug} style={styles.room} onPress={() => openRoom(rm.slug)}>
+        <PressScale key={rm.slug} style={styles.room} onPress={() => openRoom(rm.slug)} scaleTo={0.97}>
           <View style={[styles.roomSide, { backgroundColor: rm.bg ?? '#43395E' }]}>
             <Text style={[styles.roomSideNo, { color: rm.accent ?? '#E2A24A' }]}>{String(i + 2).padStart(2, '0')}</Text>
           </View>
@@ -78,16 +79,16 @@ export default function Discover() {
             {!!rm.note && <Text style={styles.roomNote} numberOfLines={2}>{rm.note}</Text>}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 9, alignItems: 'center' }}>
               {rm.items.slice(0, 3).map((it) => (
-                <Pressable key={`${it.kind}-${it.id}`} onPress={() => open(it)}>
+                <PressScale key={`${it.kind}-${it.id}`} onPress={() => open(it)} scaleTo={0.9}>
                   <BookCover item={{ type: it.kind, title: it.title, author: it.author, cover: it.cover }} w={40} r={5} />
-                </Pressable>
+                </PressScale>
               ))}
               <View style={{ flex: 1, alignItems: 'flex-end' }}>
                 <Ionicons name="arrow-forward" size={17} color={colors.muted} />
               </View>
             </View>
           </View>
-        </Pressable>
+        </PressScale>
       ))}
 
       {loaded && rooms.length === 0 && <Text style={styles.empty}>No rooms yet.</Text>}

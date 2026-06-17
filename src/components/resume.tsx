@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { BookCover } from '@/components/book-cover';
+import { PressScale } from '@/components/press';
 import type { ContinueItem } from '@/lib/api';
 import { usePlayer } from '@/lib/player';
 import { colors, serif, typeColors } from '@/lib/theme';
@@ -63,25 +65,47 @@ function EqBars({ color, size }: { color: string; size: number }) {
 }
 
 export function RingPlay({
-  pct, size = 50, ring = '#E2A24A', track = 'rgba(255,255,255,0.18)', core = '#E2A24A', glyph = '#1F4A45', sw = 3, isPlaying = false, onPress,
+  pct, size = 50, ring = '#E2A24A', track = 'rgba(255,255,255,0.18)', core = '#E2A24A', glyph = '#1F4A45', sw = 3, isPlaying = false, loading = false, onPress,
 }: {
-  pct: number; size?: number; ring?: string; track?: string; core?: string; glyph?: string; sw?: number; isPlaying?: boolean; onPress?: () => void;
+  pct: number; size?: number; ring?: string; track?: string; core?: string; glyph?: string; sw?: number; isPlaying?: boolean; loading?: boolean; onPress?: () => void;
 }) {
   const r = size / 2 - sw / 2 - 0.5;
   const C = 2 * Math.PI * r;
+
+  // Press-dip + an optimistic "pending" state so the tap is acknowledged the
+  // instant it lands — the glyph flips to a spinner before playback resolves.
+  const press = useSharedValue(0);
+  const coreStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 - 0.1 * press.value }] }));
+  const [pending, setPending] = useState(false);
+  useEffect(() => { if (isPlaying || loading) setPending(false); }, [isPlaying, loading]);
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => setPending(false), 2500); // safety: never spin forever
+    return () => clearTimeout(t);
+  }, [pending]);
+
+  const spinning = loading || pending;
+
   return (
-    <Pressable onPress={onPress} hitSlop={8} style={{ width: size, height: size }}>
+    <Pressable
+      hitSlop={8}
+      style={{ width: size, height: size }}
+      onPressIn={() => { press.value = withTiming(1, { duration: 80 }); }}
+      onPressOut={() => { press.value = withTiming(0, { duration: 150 }); }}
+      onPress={() => { if (!isPlaying) setPending(true); onPress?.(); }}>
       <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={sw} fill="none" />
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={ring} strokeWidth={sw} fill="none" strokeLinecap="round" strokeDasharray={`${C} ${C}`} strokeDashoffset={C * (1 - Math.max(0, Math.min(1, pct)))} />
       </Svg>
-      <View style={{ position: 'absolute', top: sw + 2, left: sw + 2, right: sw + 2, bottom: sw + 2, borderRadius: size, backgroundColor: core, alignItems: 'center', justifyContent: 'center' }}>
-        {isPlaying ? (
+      <Reanimated.View style={[{ position: 'absolute', top: sw + 2, left: sw + 2, right: sw + 2, bottom: sw + 2, borderRadius: size, backgroundColor: core, alignItems: 'center', justifyContent: 'center' }, coreStyle]}>
+        {spinning ? (
+          <ActivityIndicator size="small" color={glyph} />
+        ) : isPlaying ? (
           <EqBars color={glyph} size={size * 0.55} />
         ) : (
           <Ionicons name="play" size={size * 0.32} color={glyph} />
         )}
-      </View>
+      </Reanimated.View>
     </Pressable>
   );
 }
@@ -114,7 +138,7 @@ export function ResumeRibbon({ it, onOpen, onPlay }: { it: ContinueItem; onOpen:
   };
 
   return (
-    <Pressable onPress={onOpen} style={styles.ribbon}>
+    <PressScale onPress={onOpen} style={styles.ribbon}>
       <View style={styles.glow} />
       <BookCover item={{ type: it.kind, title: it.title, cover: it.cover }} w={48} r={6} />
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -136,8 +160,8 @@ export function ResumeRibbon({ it, onOpen, onPlay }: { it: ContinueItem; onOpen:
           )}
         </View>
       </View>
-      <RingPlay pct={pct} isPlaying={isThisPlaying && player.playing} onPress={handlePress} />
-    </Pressable>
+      <RingPlay pct={pct} isPlaying={isThisPlaying && player.playing} loading={isThisPlaying && player.loading} onPress={handlePress} />
+    </PressScale>
   );
 }
 
@@ -167,15 +191,15 @@ export function MiniResume({ it, onOpen, onPlay }: { it: ContinueItem; onOpen: (
   };
 
   return (
-    <Pressable onPress={onOpen} style={styles.mini}>
-      <RingPlay pct={pct} size={28} ring={col} track={colors.track} core={col} glyph="#fff" sw={2.5} isPlaying={isThisPlaying && player.playing} onPress={handlePress} />
+    <PressScale onPress={onOpen} style={styles.mini}>
+      <RingPlay pct={pct} size={28} ring={col} track={colors.track} core={col} glyph="#fff" sw={2.5} isPlaying={isThisPlaying && player.playing} loading={isThisPlaying && player.loading} onPress={handlePress} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1} style={styles.miniTitle}>{it.title}</Text>
         <Text numberOfLines={1} style={styles.miniMeta}>
           {it.kind === 'journey' ? `ch ${p.chapterNum ?? p.chapterSeq ?? 1}` : `${Math.round(pct * 100)}%`}{minLeft != null ? ` · ${minLeft} min left` : ''}
         </Text>
       </View>
-    </Pressable>
+    </PressScale>
   );
 }
 
