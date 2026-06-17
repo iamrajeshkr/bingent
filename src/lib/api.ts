@@ -79,6 +79,16 @@ export interface RecItem extends CatalogRef {
 export interface BrowseItem extends CatalogRef {
   category: string | null;
 }
+export interface HomeRail {
+  key: string;
+  title: string;
+  subtitle?: string;
+  items: CatalogRef[];
+}
+export interface HomePayload {
+  hero: (CatalogRef & { reason?: string }) | null;
+  rails: HomeRail[];
+}
 export interface AskTurn {
   role: 'user' | 'model';
   text: string;
@@ -225,6 +235,8 @@ export const api = {
   dailySit: (b: { weather: Weather; lang: Lang }) => post<SitPlan>('/v1/sit', b),
   recommend: (b: { weather?: Weather; limit?: number }) =>
     post<{ items: RecItem[] }>('/v1/recommend', b),
+  getHome: (b: { weather?: Weather; lang: Lang; hour?: number }) =>
+    get<HomePayload>(`/v1/home?lang=${b.lang}${b.weather ? `&weather=${b.weather}` : ''}&hour=${b.hour ?? new Date().getHours()}`),
   search: (b: { q: string; lang: Lang; limit?: number }) =>
     post<{ items: (RecItem & { similarity: number })[] }>('/v1/search', b),
   askLine: (b: { kind: ItemType; id: string; lang: Lang; quote: string; question?: string }) =>
