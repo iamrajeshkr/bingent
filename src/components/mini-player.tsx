@@ -11,7 +11,7 @@ import { usePlayer } from '@/lib/player';
 import { colors, serif } from '@/lib/theme';
 
 // Tab routes sit above the tab bar; everything else sits near the bottom edge.
-const TAB_ROUTES = new Set(['/', '/discover', '/you']);
+const TAB_ROUTES = new Set(['/', '/discover', '/saved', '/you']);
 // Hide entirely on these (clean input screens, immersive screens, the full player).
 const HIDDEN_EXACT = new Set(['/ask']);
 const HIDDEN_PREFIX = ['/player', '/library', '/auth', '/onboarding', '/threshold'];

@@ -55,7 +55,8 @@ export default function Ask() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bg }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 49 : 0}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.avatar}>
           <Ionicons name="sparkles" size={15} color="#FFFFFF" />
