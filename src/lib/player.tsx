@@ -91,7 +91,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (tracks: Track[], i: number, startAt: number, np: NowPlaying) => {
       const t = tracks[i];
       if (!t) return;
-      finished.current = false;
       pendingSeek.current = startAt;
       setIndex(i);
       // Play from the prefetched local copy if we have one — instant, no buffer.
@@ -204,7 +203,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Auto-advance journeys; mark complete at the end.
   useEffect(() => {
-    if (!status.didJustFinish || finished.current || !nowPlaying) return;
+    if (!status.didJustFinish) {
+      finished.current = false;
+      return;
+    }
+    if (finished.current || !nowPlaying) return;
     finished.current = true;
     if (nowPlaying.kind === 'journey' && index < queue.length - 1) {
       loadTrack(queue, index + 1, 0, nowPlaying); // next chapter (already prefetched)
