@@ -82,19 +82,24 @@ function Spine({ item, cfg, onPress }: { item: FinishedItem; cfg: (typeof SHELVE
       style={{ flex: 0 }}>
       <Animated.View style={[{
         width: cfg.w, height: h, borderRadius: 2, backgroundColor: cfg.base, overflow: 'hidden',
-        alignItems: 'center', justifyContent: 'center', transformOrigin: 'bottom',
-        shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 5, shadowOffset: { width: 2, height: 3 },
+        transformOrigin: 'bottom',
+        shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 3, shadowOffset: { width: 0, height: 3 },
       }, st]}>
-        {/* light sheen on the left edge — fakes the 3D binding */}
+        {/* light sheen on the left edge + dark seam on the right — gives each
+            spine a distinct 3D binding so neighbours read as separate books */}
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: cfg.light, opacity: 0.7 }} />
+        <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 1.5, backgroundColor: 'rgba(0,0,0,0.3)' }} />
         {/* decorative bands */}
         <View style={{ position: 'absolute', top: 12, left: 3, right: 3, height: 1.5, backgroundColor: 'rgba(244,236,220,0.4)' }} />
         <View style={{ position: 'absolute', bottom: 11, left: 3, right: 3, height: 1.5, backgroundColor: 'rgba(244,236,220,0.4)' }} />
-        {/* vertical title */}
-        <View style={{ position: 'absolute', width: h - 30, transform: [{ rotate: '90deg' }], alignItems: 'center' }}>
-          <Text numberOfLines={1} style={{ fontFamily: serif, fontSize: 9.5, fontWeight: '500', color: '#f4ecdc', letterSpacing: 0.3, textAlign: 'center', width: '100%' }}>
-            {item.title}
-          </Text>
+        {/* vertical title — an inner box sized to the spine's height (so the
+            text isn't clamped to the narrow spine width) is centred, then rotated */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: h - 28, height: 16, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '90deg' }] }}>
+            <Text numberOfLines={1} style={{ textAlign: 'center', fontFamily: serif, fontSize: 9.5, fontWeight: '500', color: '#f4ecdc', letterSpacing: 0.3 }}>
+              {item.title}
+            </Text>
+          </View>
         </View>
       </Animated.View>
     </Pressable>
@@ -114,7 +119,7 @@ function Shelf({ cfg, items, onPeek }: { cfg: (typeof SHELVES)[number]; items: F
       <View style={{ position: 'relative', marginTop: 6 }}>
         {/* recessed back panel */}
         <View style={styles.backPanel} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'flex-end', gap: cfg.key === 'byte' ? 9 : 11, paddingHorizontal: 24, paddingTop: cfg.key === 'byte' ? 22 : 18 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'flex-end', gap: cfg.key === 'byte' ? 12 : 14, paddingHorizontal: 24, paddingTop: cfg.key === 'byte' ? 22 : 18 }}>
           {items.map((it) => <Spine key={`${it.kind}-${it.id}`} item={it} cfg={cfg} onPress={() => onPeek(it)} />)}
         </ScrollView>
         {/* wooden plank */}
